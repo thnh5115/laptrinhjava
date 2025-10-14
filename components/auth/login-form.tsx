@@ -96,6 +96,15 @@ export function LoginForm() {
             {isLoading ? "Signing in..." : "Sign In"}
           </Button>
 
+
+          <p className="text-center text-sm text-muted-foreground">
+            Don't have an account?{" "}
+            <a href="/auth/register" className="text-emerald-600 hover:text-emerald-700 font-medium">
+              Sign up
+            </a>
+          </p>
+
+
           <div className="mt-6 p-4 bg-muted rounded-lg">
             <p className="text-sm font-medium mb-2">Demo Accounts:</p>
             <div className="space-y-1 text-xs text-muted-foreground">
