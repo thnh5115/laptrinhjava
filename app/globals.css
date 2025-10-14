@@ -165,7 +165,14 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
+
+  <<<<<<< HEAD body {
     @apply bg-background text-foreground;
   }
 }
+
+=======body {
+  @apply bg-background text-foreground;
+}
+}
+
