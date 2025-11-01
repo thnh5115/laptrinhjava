@@ -1,0 +1,28 @@
+{
+  "name": "@repo/ts-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    "./client": "./src/client/index.ts",
+    "./client/*": "./src/client/*.ts",
+    "./models": "./src/models/index.ts",
+    "./models/*": "./src/models/*.ts",
+    "./validators": "./src/validators/index.ts",
+    "./validators/*": "./src/validators/*.ts",
+    "./utils": "./src/utils/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5"
+  }
+}

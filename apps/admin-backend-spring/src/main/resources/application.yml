@@ -1,0 +1,55 @@
+spring:
+  profiles:
+    active: dev
+  # AUD-002: Enable scheduling for audit log cleanup job
+  task:
+    scheduling:
+      enabled: true
+
+# AUD-002: Audit log retention policy (days)
+audit:
+  retention:
+    days: 90
+
+# Spring Boot Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,env,loggers"
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  prometheus:
+    metrics:
+      export:
+        enabled: false
+
+# OpenAPI/Swagger Configuration (PR-7: FE Integration Blockers)
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    display-request-duration: true
+    doc-expansion: none
+    default-models-expand-depth: 3
+  # Scan only project packages
+  packages-to-scan: ccm.admin, ccm.common
+  # Match only API paths
+  paths-to-match: /api/**
+  # Exclude JPA entities from schema generation
+  model-and-view-allowed: false
+  override-with-generic-response: false
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
+
+# Application Configuration (PR-7: FE Integration Blockers)
+app:
+  frontend:
+    origin: ${FRONTEND_ORIGIN:http://localhost:3000}

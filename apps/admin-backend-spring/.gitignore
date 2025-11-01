@@ -1,0 +1,62 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Custom ###
+node_modules/
+.DS_Store
+Thumbs.db
+logs/
+*.log
+.env
+structure.txt
+*.jar
+*.war
+*.ps1
+.cleanup-before.txt
+# Maven
+# IDE
+.idea/
+.settings/
+# Node.js
+# OS
+# Logs
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+# SonarQube
+.scannerwork/
+# Build artifacts
+# Environment
