@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:cva;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: false
+  jpa:
+    properties:
+      "[hibernate.dialect]": org.hibernate.dialect.H2Dialect
+    open-in-view: false
+
+app:
+  security:
+    enabled: false
