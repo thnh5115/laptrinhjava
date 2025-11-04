@@ -1,0 +1,14 @@
+# Ignore MySQL Docker data
+mysql_data/
+
+# Maven build output
+target/
+
+# IDE settings
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
