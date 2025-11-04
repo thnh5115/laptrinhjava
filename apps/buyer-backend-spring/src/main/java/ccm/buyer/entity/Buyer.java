@@ -4,14 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;  
 
 @Entity
 @Table(name = "buyers")
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor @Builder
 public class Buyer {
 
     @Id
@@ -23,18 +21,21 @@ public class Buyer {
 
     @Column(nullable = false, length = 100)
     private String fullName;
-
-    @Column(length = 15)
-    private String phone;
-
-    @Column(length = 255)
-    private String organization;
-
+    
     @Column(nullable = false)
+    private String password;
+
+    @Column(length = 20)
+    private String status;
+
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
+
+    @OneToMany(mappedBy = "buyer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CreditOrder> orders;
 }
