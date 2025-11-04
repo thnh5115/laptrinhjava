@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/carbon_cva}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      "[hibernate.dialect]": org.hibernate.dialect.MySQL8Dialect
+      "[hibernate.format_sql]": true
+    open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  jackson:
+    default-property-inclusion: NON_NULL
+
+server:
+  port: 8082
+  error:
+    include-binding-errors: always
+    include-message: always
+
+app:
+  security:
+    dev-user:
+      username: cva_officer
+      password: password123
