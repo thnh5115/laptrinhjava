@@ -1,10 +1,11 @@
 package ccm.buyer.repository;
 
 import ccm.buyer.entity.Buyer;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 
-@Repository
-public interface BuyerRepository extends JpaRepository<Buyer, Long> {
-    boolean existsByEmail(String email);
+
+public interface BuyerRepository extends JpaRepository<Buyer, Long> {   
+    Page<Buyer> findByFullNameContainingIgnoreCase(String keyword, Pageable pageable);
 }

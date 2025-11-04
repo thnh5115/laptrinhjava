@@ -4,6 +4,8 @@ import ccm.buyer.entity.Buyer;
 import ccm.buyer.repository.BuyerRepository;
 import ccm.buyer.service.BuyerService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,15 +23,20 @@ public class BuyerServiceImpl implements BuyerService {
     }
 
     @Override
+    public Page<Buyer> getBuyers(String keyword, Pageable pageable) {
+        if (keyword == null || keyword.isBlank()) {
+            return buyerRepository.findAll(pageable);
+        }
+        return buyerRepository.findByFullNameContainingIgnoreCase(keyword, pageable);
+    }
+
+    @Override
     public Optional<Buyer> getBuyerById(Long id) {
         return buyerRepository.findById(id);
     }
 
     @Override
-    public Buyer createBuyer(Buyer buyer) {
-        if (buyerRepository.existsByEmail(buyer.getEmail())) {
-            throw new RuntimeException("Email already exists: " + buyer.getEmail());
-        }
+    public Buyer createBuyer(Buyer buyer) { 
         return buyerRepository.save(buyer);
     }
 
@@ -37,7 +44,9 @@ public class BuyerServiceImpl implements BuyerService {
     public Buyer updateBuyer(Long id, Buyer buyer) {
         Buyer existing = buyerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Buyer not found"));
+        existing.setEmail(buyer.getEmail());
         existing.setFullName(buyer.getFullName());
+        existing.setPassword(buyer.getPassword());
         existing.setStatus(buyer.getStatus());
         return buyerRepository.save(existing);
     }
