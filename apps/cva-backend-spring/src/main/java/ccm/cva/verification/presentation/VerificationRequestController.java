@@ -1,6 +1,7 @@
 package ccm.cva.verification.presentation;
 
 import ccm.common.dto.paging.PageResponse;
+import ccm.cva.security.RateLimited;
 import ccm.cva.verification.application.command.ApproveVerificationRequestCommand;
 import ccm.cva.verification.application.command.CreateVerificationRequestCommand;
 import ccm.cva.verification.application.command.RejectVerificationRequestCommand;
@@ -103,6 +104,7 @@ public class VerificationRequestController {
 
     @Operation(summary = "Approve a verification request")
     @PutMapping("/{id}/approve")
+    @RateLimited("approve")
     public ResponseEntity<VerificationRequestResponse> approve(
             @PathVariable UUID id,
             @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
@@ -129,6 +131,7 @@ public class VerificationRequestController {
 
     @Operation(summary = "Reject a verification request")
     @PutMapping("/{id}/reject")
+    @RateLimited("reject")
     public ResponseEntity<VerificationRequestResponse> reject(
             @PathVariable UUID id,
             @RequestHeader(value = "X-Correlation-Id", required = false) String correlationId,

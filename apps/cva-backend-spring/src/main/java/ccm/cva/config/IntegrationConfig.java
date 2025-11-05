@@ -3,6 +3,8 @@ package ccm.cva.config;
 import ccm.cva.audit.client.AuditClientProperties;
 import ccm.cva.audit.client.AuditLogClient;
 import ccm.cva.audit.client.HttpAuditLogClient;
+import ccm.cva.shared.trace.CorrelationIdFilter;
+import ccm.cva.shared.trace.CorrelationIdHolder;
 import ccm.cva.wallet.client.WalletClient;
 import ccm.cva.wallet.client.WalletClientProperties;
 import ccm.cva.wallet.client.WalletHttpClient;
@@ -26,6 +28,10 @@ public class IntegrationConfig {
     @Primary
     public WalletClient walletHttpClient(RestTemplateBuilder builder, WalletClientProperties properties) {
         RestTemplate restTemplate = builder
+            .additionalInterceptors((request, body, execution) -> {
+                CorrelationIdHolder.get().ifPresent(id -> request.getHeaders().add(CorrelationIdFilter.HEADER_NAME, id));
+                return execution.execute(request, body);
+            })
             .build();
         restTemplate.setRequestFactory(requestFactory(properties.getConnectTimeout(), properties.getReadTimeout()));
         return new WalletHttpClient(restTemplate, properties);
@@ -42,6 +48,10 @@ public class IntegrationConfig {
     @Primary
     public AuditLogClient httpAuditLogClient(RestTemplateBuilder builder, AuditClientProperties properties) {
         RestTemplate restTemplate = builder
+            .additionalInterceptors((request, body, execution) -> {
+                CorrelationIdHolder.get().ifPresent(id -> request.getHeaders().add(CorrelationIdFilter.HEADER_NAME, id));
+                return execution.execute(request, body);
+            })
             .build();
         restTemplate.setRequestFactory(requestFactory(properties.getConnectTimeout(), properties.getReadTimeout()));
         return new HttpAuditLogClient(restTemplate, properties);

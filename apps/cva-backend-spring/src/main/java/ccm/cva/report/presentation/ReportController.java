@@ -1,5 +1,6 @@
 package ccm.cva.report.presentation;
 
+import ccm.cva.security.RateLimited;
 import ccm.cva.report.application.dto.CarbonAuditReport;
 import ccm.cva.report.application.service.ReportFormat;
 import ccm.cva.report.application.service.ReportService;
@@ -29,6 +30,7 @@ public class ReportController {
 
     @Operation(summary = "Generate carbon audit report")
     @GetMapping("/{id}")
+    @RateLimited("report")
     public ResponseEntity<?> generateReport(
             @PathVariable UUID id,
             @Parameter(description = "Output format (json or pdf)")
