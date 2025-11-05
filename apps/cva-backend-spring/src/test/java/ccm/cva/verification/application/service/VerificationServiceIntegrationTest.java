@@ -16,6 +16,7 @@ import ccm.cva.verification.domain.VerificationRequest;
 import ccm.cva.verification.domain.VerificationStatus;
 import ccm.cva.verification.infrastructure.repository.VerificationRequestRepository;
 import ccm.cva.wallet.client.WalletClient;
+import ccm.cva.verification.application.query.VerificationRequestQuery;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,6 +28,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
@@ -79,6 +82,7 @@ class VerificationServiceIntegrationTest {
 
         assertThat(approved.getStatus()).isEqualTo(VerificationStatus.APPROVED);
         assertThat(approved.getVerifiedAt()).isNotNull();
+    assertThat(approved.getCreditIssuance()).isNotNull();
         Optional<CreditIssuance> issuance = issuanceService.getByIdempotencyKey("idem-123");
         assertThat(issuance).isPresent();
         verify(walletClient, times(1)).credit(OWNER_ID, issuance.orElseThrow().getCreditsRounded(), "corr-123", "idem-123");
@@ -107,6 +111,42 @@ class VerificationServiceIntegrationTest {
         VerificationRequest rejected = verificationService.reject(request.getId(), command);
         assertThat(rejected.getStatus()).isEqualTo(VerificationStatus.REJECTED);
         assertThat(rejected.getVerifierId()).isEqualTo(VERIFIER_ID);
+    }
+
+    @Test
+    void searchSupportsFilteringByStatusAndText() {
+        verificationService.create(new CreateVerificationRequestCommand(
+            OWNER_ID,
+            "TRIP-PENDING",
+            new BigDecimal("80.0"),
+            new BigDecimal("16.0"),
+            "checksum-pending",
+            null
+        ));
+
+        VerificationRequest approved = verificationService.create(new CreateVerificationRequestCommand(
+            OWNER_ID,
+            "TRIP-APPROVED",
+            new BigDecimal("100.0"),
+            new BigDecimal("20.0"),
+            "checksum-approved",
+            null
+        ));
+
+        verificationService.approve(approved.getId(), new ApproveVerificationRequestCommand(
+            VERIFIER_ID,
+            null,
+            "idem-search",
+            "corr-search"
+        ));
+
+        VerificationRequestQuery query = new VerificationRequestQuery(VerificationStatus.APPROVED, null, null, null, "trip-approved");
+        Page<VerificationRequest> page = verificationService.search(query, PageRequest.of(0, 10));
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+    VerificationRequest result = page.getContent().get(0);
+        assertThat(result.getCreditIssuance()).isNotNull();
+        assertThat(result.getTripId()).isEqualTo("TRIP-APPROVED");
     }
 
     @Test

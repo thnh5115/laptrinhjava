@@ -4,8 +4,10 @@ import ccm.common.dto.paging.PageResponse;
 import ccm.cva.verification.application.command.ApproveVerificationRequestCommand;
 import ccm.cva.verification.application.command.CreateVerificationRequestCommand;
 import ccm.cva.verification.application.command.RejectVerificationRequestCommand;
+import ccm.cva.verification.application.query.VerificationRequestQuery;
 import ccm.cva.verification.application.service.VerificationService;
 import ccm.cva.verification.domain.VerificationRequest;
+import ccm.cva.verification.domain.VerificationStatus;
 import ccm.cva.verification.presentation.dto.ApproveVerificationRequestPayload;
 import ccm.cva.verification.presentation.dto.CreateVerificationRequestPayload;
 import ccm.cva.verification.presentation.dto.RejectVerificationRequestPayload;
@@ -14,6 +16,7 @@ import ccm.cva.verification.presentation.mapper.VerificationRequestMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -28,7 +31,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.format.annotation.DateTimeFormat;
 
 @RestController
 @RequestMapping("/api/cva/requests")
@@ -64,8 +69,16 @@ public class VerificationRequestController {
 
     @Operation(summary = "List verification requests")
     @GetMapping
-    public PageResponse<VerificationRequestResponse> list(@PageableDefault(size = 20) Pageable pageable) {
-        Page<VerificationRequest> page = service.findAll(pageable);
+    public PageResponse<VerificationRequestResponse> list(
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestParam(required = false) VerificationStatus status,
+            @RequestParam(required = false) UUID ownerId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant createdTo,
+            @RequestParam(required = false) String search
+    ) {
+        VerificationRequestQuery query = new VerificationRequestQuery(status, ownerId, createdFrom, createdTo, search);
+        Page<VerificationRequest> page = service.search(query, pageable);
         List<VerificationRequestResponse> content = page.getContent().stream()
             .map(mapper::toResponse)
             .toList();

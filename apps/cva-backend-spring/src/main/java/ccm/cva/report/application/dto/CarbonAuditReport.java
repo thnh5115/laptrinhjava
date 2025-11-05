@@ -1,12 +1,12 @@
-package ccm.cva.verification.presentation.dto;
+package ccm.cva.report.application.dto;
 
 import ccm.cva.verification.domain.VerificationStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-public record VerificationRequestResponse(
-        UUID id,
+public record CarbonAuditReport(
+        UUID requestId,
         UUID ownerId,
         String tripId,
         BigDecimal distanceKm,
@@ -17,5 +17,7 @@ public record VerificationRequestResponse(
         Instant verifiedAt,
         UUID verifierId,
         String notes,
-        CreditIssuanceResponse creditIssuance
+        CreditIssuanceSummary issuance,
+        String signature,
+        Instant generatedAt
 ) {}

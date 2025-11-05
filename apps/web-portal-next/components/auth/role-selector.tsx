@@ -3,13 +3,21 @@
 import { Card } from "@/components/ui/card"
 import { Leaf, ShoppingCart, Shield, Settings } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import type { UserRole } from "@/lib/mock-data"
 
 interface RoleSelectorProps {
-  selectedRole: string
-  onRoleChange: (role: string) => void
+  selectedRole: UserRole
+  onRoleChange: (role: UserRole) => void
 }
 
-const roles = [
+const roles: Array<{
+  value: UserRole
+  label: string
+  icon: typeof Leaf
+  description: string
+  color: string
+  hidden?: boolean
+}> = [
   {
     value: "ev-owner",
     label: "EV Owner",

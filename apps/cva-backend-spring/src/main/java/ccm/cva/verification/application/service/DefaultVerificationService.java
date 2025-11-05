@@ -7,6 +7,8 @@ import ccm.cva.shared.exception.ResourceNotFoundException;
 import ccm.cva.verification.application.command.ApproveVerificationRequestCommand;
 import ccm.cva.verification.application.command.CreateVerificationRequestCommand;
 import ccm.cva.verification.application.command.RejectVerificationRequestCommand;
+import ccm.cva.verification.application.query.VerificationRequestQuery;
+import ccm.cva.verification.application.query.VerificationRequestSpecifications;
 import ccm.cva.verification.domain.VerificationRequest;
 import ccm.cva.verification.domain.VerificationStatus;
 import ccm.cva.verification.infrastructure.repository.VerificationRequestRepository;
@@ -84,8 +86,17 @@ public class DefaultVerificationService implements VerificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<VerificationRequest> findAll(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<VerificationRequest> search(VerificationRequestQuery query, Pageable pageable) {
+        Page<VerificationRequest> page = repository.findAll(
+            VerificationRequestSpecifications.fromQuery(query),
+            pageable
+        );
+        page.getContent().forEach(request -> {
+            if (request.getCreditIssuance() != null) {
+                request.getCreditIssuance().getCreditsRounded();
+            }
+        });
+        return page;
     }
 
     @Override
@@ -115,6 +126,7 @@ public class DefaultVerificationService implements VerificationService {
                     List.of("Provided idempotency key belongs to another request")
                 );
             }
+            request.setCreditIssuance(issuance);
             if (request.getStatus() != VerificationStatus.APPROVED) {
                 request.setStatus(VerificationStatus.APPROVED);
                 request.setVerifiedAt(Instant.now());
@@ -128,7 +140,8 @@ public class DefaultVerificationService implements VerificationService {
 
         ensurePending(request);
 
-        CreditIssuance issuance = issuanceService.issueCredits(request, command.idempotencyKey(), command.correlationId());
+    CreditIssuance issuance = issuanceService.issueCredits(request, command.idempotencyKey(), command.correlationId());
+    request.setCreditIssuance(issuance);
 
         request.setStatus(VerificationStatus.APPROVED);
         request.setVerifiedAt(Instant.now());
