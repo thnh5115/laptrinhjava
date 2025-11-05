@@ -4,9 +4,6 @@ import java.math.BigDecimal;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-
-@Component
 public class NoopWalletClient implements WalletClient {
 
     private static final Logger log = LoggerFactory.getLogger(NoopWalletClient.class);

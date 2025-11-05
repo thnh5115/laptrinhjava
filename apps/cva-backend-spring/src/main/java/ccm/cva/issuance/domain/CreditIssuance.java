@@ -7,10 +7,12 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -20,7 +22,18 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "cva_credit_issuances")
+@Table(
+    name = "credit_issuances",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_credit_issuances_request", columnNames = {"request_id"}),
+        @UniqueConstraint(name = "uk_credit_issuances_idempotency", columnNames = {"idempotency_key"})
+    },
+    indexes = {
+        @Index(name = "idx_credit_issuances_owner", columnList = "owner_id"),
+        @Index(name = "idx_credit_issuances_created_at", columnList = "created_at"),
+        @Index(name = "idx_credit_issuances_corr", columnList = "correlation_id")
+    }
+)
 @Getter
 @Setter
 public class CreditIssuance {

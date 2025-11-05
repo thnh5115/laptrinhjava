@@ -1,14 +1,19 @@
 package ccm.cva.verification.domain;
 
+import ccm.cva.issuance.domain.CreditIssuance;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -18,7 +23,18 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "cva_verification_requests")
+@Table(
+    name = "verification_requests",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_verification_requests_checksum", columnNames = {"checksum"}),
+        @UniqueConstraint(name = "uk_verification_requests_owner_trip", columnNames = {"owner_id", "trip_id"})
+    },
+    indexes = {
+        @Index(name = "idx_verification_requests_owner", columnList = "owner_id"),
+        @Index(name = "idx_verification_requests_status", columnList = "status"),
+        @Index(name = "idx_verification_requests_created_at", columnList = "created_at")
+    }
+)
 @Getter
 @Setter
 public class VerificationRequest {
@@ -58,8 +74,11 @@ public class VerificationRequest {
     @JdbcTypeCode(SqlTypes.BINARY)
     private UUID verifierId;
 
-    @Column(name = "notes")
+    @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
+
+    @OneToOne(mappedBy = "verificationRequest", fetch = FetchType.LAZY)
+    private CreditIssuance creditIssuance;
 
     @PrePersist
     void onCreate() {

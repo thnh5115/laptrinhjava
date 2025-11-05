@@ -1,12 +1,13 @@
 package ccm.cva.infrastructure.persistence.jpa;
 
-import ccm.cva.domain.model.VerificationRequest;
-import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.NoRepositoryBean;
 
-public interface VerificationRequestRepository extends JpaRepository<VerificationRequest, UUID> {
-
-    boolean existsByChecksum(String checksum);
-
-    boolean existsByOwnerIdAndTripId(UUID ownerId, String tripId);
-}
+/**
+ * Legacy bridge kept to avoid breaking historical imports. The real repository bean lives under
+ * {@code ccm.cva.verification.infrastructure.repository}. Marking this interface with
+ * {@link NoRepositoryBean} prevents Spring Data from instantiating a duplicate bean while existing
+ * callers can still compile against the old package.
+ */
+@NoRepositoryBean
+public interface VerificationRequestRepository
+        extends ccm.cva.verification.infrastructure.repository.VerificationRequestRepository {}

@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:cva;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:mem:cva;MODE=MySQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password: sa
@@ -9,6 +9,8 @@ spring:
       ddl-auto: none
     properties:
       "[hibernate.dialect]": org.hibernate.dialect.H2Dialect
+      "[hibernate.format_sql]": true
+      "[hibernate.jdbc.time_zone]": UTC
     open-in-view: false
   flyway:
     enabled: true
@@ -17,10 +19,15 @@ spring:
   jackson:
     default-property-inclusion: NON_NULL
 
+logging:
+  level:
+    "[org.flywaydb]": warn
+    "[ccm.cva]": debug
+
 app:
   security:
     allowed-origins:
       - http://localhost:3000
     dev-user:
-      username: test
-      password: test
+      username: test_cva
+      password: Password123!

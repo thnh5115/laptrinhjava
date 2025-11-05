@@ -10,4 +10,8 @@ import org.springframework.stereotype.Repository;
 public interface VerificationRequestRepository extends JpaRepository<VerificationRequest, UUID> {
 
     Optional<VerificationRequest> findByChecksum(String checksum);
+
+    boolean existsByChecksum(String checksum);
+
+    boolean existsByOwnerIdAndTripId(UUID ownerId, String tripId);
 }
