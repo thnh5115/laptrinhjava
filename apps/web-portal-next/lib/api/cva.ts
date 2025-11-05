@@ -47,13 +47,19 @@ export interface VerificationQuery {
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_CVA_API_URL ?? "http://localhost:8082"
+const DEV_FALLBACK_TOKEN = "Basic Y3ZhX29mZmljZXI6cGFzc3dvcmQxMjM="
 
 function getAuthHeader(): string | undefined {
-  const token = process.env.NEXT_PUBLIC_CVA_BASIC_TOKEN
-  if (!token) {
-    return undefined
+  const token = process.env.NEXT_PUBLIC_CVA_BASIC_TOKEN?.trim()
+  if (token && token.length > 0) {
+    return token.startsWith("Basic ") ? token : `Basic ${token}`
   }
-  return token.startsWith("Basic ") ? token : `Basic ${token}`
+
+  if (process.env.NODE_ENV !== "production") {
+    return DEV_FALLBACK_TOKEN
+  }
+
+  return undefined
 }
 
 function generateUuid(): string {

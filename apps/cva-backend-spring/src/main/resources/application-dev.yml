@@ -24,6 +24,9 @@ server:
 
 app:
   security:
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:3001
     dev-user:
       username: cva_officer
       password: password123
