@@ -1,7 +1,0 @@
-target
-mysql_data
-*.sock
-*.log
-.git
-.gitignore
-.mvn/wrapper/maven-wrapper.jar

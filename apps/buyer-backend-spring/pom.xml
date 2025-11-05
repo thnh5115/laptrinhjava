@@ -25,6 +25,7 @@
         <dependency>
             <groupId>com.ccm</groupId>
             <artifactId>java-common</artifactId>
+            <version>1.0.0</version>
         </dependency>
 
         <!-- Spring Boot Starters -->
