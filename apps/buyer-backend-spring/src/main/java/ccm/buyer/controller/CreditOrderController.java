@@ -2,6 +2,8 @@ package ccm.buyer.controller;
 
 import ccm.buyer.entity.CreditOrder;
 import ccm.buyer.service.CreditOrderService;
+import ccm.buyer.dto.request.UpdateOrderStatusRequest;
+import ccm.buyer.dto.response.BuyerDashboardResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,8 +27,17 @@ public class CreditOrderController {
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<CreditOrder> updateStatus(@PathVariable("id") Long id,
-                                                    @RequestParam String status) {
-        return ResponseEntity.ok(creditOrderService.updateStatus(id, status));
+    public ResponseEntity<CreditOrder> updateStatus(
+            @PathVariable Long id,
+            @RequestBody UpdateOrderStatusRequest request
+    ) {
+        CreditOrder updated = creditOrderService.updateOrderStatus(id, request.getStatus());
+        return ResponseEntity.ok(updated);
     }
+
+    @GetMapping("/dashboard/{buyerId}")
+    public ResponseEntity<BuyerDashboardResponse> getBuyerDashboard(@PathVariable Long buyerId) {
+        return ResponseEntity.ok(creditOrderService.getBuyerDashboard(buyerId));
+    }
+
 }

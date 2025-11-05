@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  mysql-buyer:
+    image: mysql:8.0
+    container_name: mysql-buyer
+    restart: always
+    environment:
+      MYSQL_DATABASE: carbon_buyer
+      MYSQL_ROOT_PASSWORD: 123456
+    ports:
+      - "3307:3306"
+    volumes:
+      - buyer-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p123456"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  buyer-backend:
+    build:
+      context: ../../apps/buyer-backend-spring
+      dockerfile: Dockerfile
+    container_name: buyer-backend
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-buyer:3306/carbon_buyer?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+    depends_on:
+      mysql-buyer:
+        condition: service_healthy
+
+volumes:
+  buyer-mysql-data:

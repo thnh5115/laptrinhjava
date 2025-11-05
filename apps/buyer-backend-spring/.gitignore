@@ -1,5 +1,6 @@
 # Ignore MySQL Docker data
-mysql_data/
+/mysql_data/
+*.sock
 
 # Maven build output
 target/

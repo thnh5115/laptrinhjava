@@ -18,7 +18,7 @@ public class CreditOrder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "buyer_id", nullable = false)
     private Buyer buyer;
 
@@ -29,27 +29,26 @@ public class CreditOrder {
     private Double price;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private OrderStatus status;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    /** 
-     * Tự động gán createdAt và updatedAt khi tạo mới
-     */
+    
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        if (this.status == null) {
+            this.status = OrderStatus.PENDING;
+        }
     }
 
-    /**
-     * Tự động cập nhật updatedAt khi có thay đổi
-     */
+    
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();

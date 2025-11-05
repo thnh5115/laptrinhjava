@@ -3,8 +3,13 @@ package ccm.buyer.dto.request;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
 
 @Data
+@Getter
+@Setter
 public class CreateBuyerRequest {
 
     @Email(message = "Email must be valid")
