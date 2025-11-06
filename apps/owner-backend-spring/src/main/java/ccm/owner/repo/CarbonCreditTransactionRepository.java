@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-interface CarbonCreditTransactionRepository extends JpaRepository<CarbonCreditTransaction, Long> {
+public interface CarbonCreditTransactionRepository extends JpaRepository<CarbonCreditTransaction, Long> {
     List<CarbonCreditTransaction> findByWalletIdOrderByTimestampDesc(Long walletId);
 }
 

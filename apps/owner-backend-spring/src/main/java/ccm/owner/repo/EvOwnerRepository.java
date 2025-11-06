@@ -3,5 +3,5 @@ package ccm.owner.repo;
 import ccm.owner.entitys.EvOwner;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-interface EvOwnerRepository extends JpaRepository<EvOwner, Long> {
+public interface EvOwnerRepository extends JpaRepository<EvOwner, Long> {
 }

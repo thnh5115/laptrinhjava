@@ -1,51 +1,61 @@
 package ccm.owner.service;
 
+import ccm.owner.DTO.JourneyDTO;
+import ccm.owner.entitys.EvOwner;
 import ccm.owner.entitys.Journey;
-import ccm.owner.entitys.JourneyStatus;
 import ccm.owner.repo.JourneyRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 @Service
-public class JourneyService implements IJourneyService {
+@RequiredArgsConstructor
+public class JourneyService {
 
     private final JourneyRepository journeyRepository;
+    private final CarbonCalculationService carbonService;
+    private final WalletService walletService;
+    private final ObjectMapper objectMapper; // Spring Boot provides this
 
-    @Autowired
-    public JourneyService(JourneyRepository journeyRepository) {
-        this.journeyRepository = journeyRepository;
-    }
+    @Transactional
+    public void processJourneyFile(InputStream inputStream, EvOwner owner) {
+        try {
+            // 1. Read JSON file into a List of DTOs
+            List<JourneyDTO> dtos = objectMapper.readValue(
+                    inputStream,
+                    new TypeReference<List<JourneyDTO>>() {}
+            );
 
-    @Override
-    public List<Journey> getAllJourneys() {
-        return journeyRepository.findAll();
-    }
+            // 2. Loop through each DTO
+            for (JourneyDTO dto : dtos) {
+                // 3. Map DTO to the Journey Entity
+                Journey journey = new Journey();
+                journey.setOwner(owner);
+                journey.setDistance(dto.distanceInKm());
 
-    @Override
-    public Optional<Journey> getJourneyById(Long id) {
-        return journeyRepository.findById(id);
-    }
+                Journey savedJourney = journeyRepository.save(journey);
 
-    @Override
-    public List<Journey> getJourneysByOwnerId(Long ownerId) {
-        return journeyRepository.findByOwnerId(ownerId);
-    }
+                // 4. Calculate carbon & update wallet
+                BigDecimal kgCo2Saved = carbonService.calculateCarbonSaved(savedJourney);
+                BigDecimal creditsEarned = carbonService.convertCo2ToCredits(kgCo2Saved);
 
-    @Override
-    public List<Journey> getJourneysByStatus(JourneyStatus journeyStatus) {
-        return journeyRepository.findByJourneyStatus(journeyStatus);
-    }
-
-    @Override
-    public Journey saveJourney(Journey journey) {
-        return journeyRepository.save(journey);
-    }
-
-    @Override
-    public void deleteJourney(Long id) {
-        journeyRepository.deleteById(id);
+                if (creditsEarned.compareTo(BigDecimal.ZERO) > 0) {
+                    walletService.addCredits(
+                            owner.getWallet().getId(),
+                            creditsEarned,
+                            savedJourney
+                    );
+                }
+            }
+        } catch (Exception e) {
+            // In a real app, use a more specific exception
+            throw new RuntimeException("Failed to parse and process journey file", e);
+        }
     }
 }
