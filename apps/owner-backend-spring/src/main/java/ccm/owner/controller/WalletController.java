@@ -1,7 +1,6 @@
 package ccm.owner.controller;
 
 import ccm.owner.DTO.SpendRequestDTO;
-import ccm.owner.entitys.CarbonCreditTransaction;
 import ccm.owner.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

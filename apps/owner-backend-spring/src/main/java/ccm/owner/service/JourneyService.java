@@ -46,8 +46,8 @@ public class JourneyService {
                 BigDecimal creditsEarned = carbonService.convertCo2ToCredits(kgCo2Saved);
 
                 if (creditsEarned.compareTo(BigDecimal.ZERO) > 0) {
-                    walletService.addCredits(
-                            owner.getWallet().getId(),
+                    walletService.createNewCreditToken(
+                            user.getWallet(),
                             creditsEarned,
                             savedJourney
                     );
