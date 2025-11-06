@@ -1,4 +1,4 @@
-package ccm.owner.Journey;
+package ccm.owner.entitys;
 
 public enum JourneyStatus {
     RECORDED,// saved

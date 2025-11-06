@@ -1,7 +1,5 @@
-package ccm.owner.Journey;
+package ccm.owner.entitys;
 
-
-import ccm.owner.entitys.EvOwner;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
