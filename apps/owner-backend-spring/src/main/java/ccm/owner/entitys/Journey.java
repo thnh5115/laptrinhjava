@@ -31,12 +31,4 @@ public class Journey {
 
     @Column(name = "co2_reduced_kg")
     private Double co2Reduced;
-
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private JourneyStatus status;
-
 }
