@@ -35,14 +35,14 @@ public class BuyerController {
 
     @PostMapping
     public ResponseEntity<BuyerResponse> createBuyer(@Valid @RequestBody CreateBuyerRequest request) {
-        Buyer buyer = Buyer.builder()
-                .email(request.getEmail())
-                .fullName(request.getFullName())
-                .password(request.getPassword())
-                .status(request.getStatus())
-                .build();
+        Buyer buyer = new Buyer();
+        buyer.setEmail(request.getEmail());
+        buyer.setFullName(request.getFullName());
+        buyer.setPassword(request.getPassword());
+        buyer.setStatus(request.getStatus());
 
         Buyer saved = buyerService.createBuyer(buyer);
+
         return ResponseEntity.ok(BuyerResponse.builder()
                 .id(saved.getId())
                 .email(saved.getEmail())
@@ -50,7 +50,7 @@ public class BuyerController {
                 .status(saved.getStatus())
                 .build());
     }
-    
+
     @PutMapping("/{id}")
     public ResponseEntity<Buyer> updateBuyer(@PathVariable("id") Long id, @RequestBody Buyer buyer) {
         return ResponseEntity.ok(buyerService.updateBuyer(id, buyer));
@@ -70,12 +70,14 @@ public class BuyerController {
     ) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Buyer> buyers = buyerService.getBuyers(keyword, pageable);
+
         Page<BuyerResponse> response = buyers.map(b -> BuyerResponse.builder()
                 .id(b.getId())
                 .email(b.getEmail())
                 .fullName(b.getFullName())
                 .status(b.getStatus())
                 .build());
+
         return ResponseEntity.ok(response);
     }
 }
