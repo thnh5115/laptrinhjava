@@ -21,28 +21,30 @@ public class Wallet {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // --- CACHED BALANCES ---
     // These are the sum of CarbonCredit entities
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal totalBalance; // Sum of AVAILABLE + LOCKED
 
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal lockedBalance; // Sum of LOCKED
-    // ---
+
 
     @OneToOne(optional = false)
-    @JoinColumn(name = "user_id", unique = true)
-    private User user;
+    @JoinColumn(name = "owner_id", unique = true)
+    private EvOwner owner;
 
     // All credits (tokens) this wallet owns
-    @OneToMany(mappedBy = "wallet")
+    @OneToMany(mappedBy = "wallet", fetch = FetchType.LAZY)
     private List<CarbonCredit> credits;
 
     // All transactions (history log)
     @OneToMany(mappedBy = "wallet")
     private List<CarbonCreditTransaction> transactions;
 
-    // Helper method (not in DB)
+    /**
+     * Helper method (not stored in the database) to calculate available funds.
+     * @return The amount of credits frees to be spent or sold.
+     */
     @Transient
     public BigDecimal getAvailableBalance() {
         return this.totalBalance.subtract(this.lockedBalance);
@@ -50,7 +52,12 @@ public class Wallet {
 
     @PrePersist
     private void onPrePersist() {
-        this.totalBalance = BigDecimal.ZERO;
-        this.lockedBalance = BigDecimal.ZERO;
+        // Initialize balances to zero when a new wallet is created
+        if (this.totalBalance == null) {
+            this.totalBalance = BigDecimal.ZERO;
+        }
+        if (this.lockedBalance == null) {
+            this.lockedBalance = BigDecimal.ZERO;
+        }
     }
 }

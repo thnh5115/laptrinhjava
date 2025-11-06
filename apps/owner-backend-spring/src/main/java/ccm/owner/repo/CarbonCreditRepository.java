@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import java.math.BigDecimal;
 import java.util.List;
 
-interface CarbonCreditRepository extends JpaRepository<CarbonCredit, Long> {
+public interface CarbonCreditRepository extends JpaRepository<CarbonCredit, Long> {
     // Find all available credits for a specific wallet
     List<CarbonCredit> findByWalletAndStatus(Wallet wallet, CreditStatus status);
 

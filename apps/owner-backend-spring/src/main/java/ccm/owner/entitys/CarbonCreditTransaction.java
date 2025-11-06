@@ -1,13 +1,12 @@
 package ccm.owner.entitys;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 @NoArgsConstructor
 @Getter
@@ -16,14 +15,36 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "carbon_credit_transactions")
 public class CarbonCreditTransaction {
-    // ... id, wallet, timestamp ...
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // The credit token that was moved/created/retired
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "carbon_credit_id")
+    private CarbonCredit credit;
+
+    // The 'from' wallet. Null if it was just created (EARNED)
+    @ManyToOne
+    @JoinColumn(name = "source_wallet_id")
+    private Wallet sourceWallet;
+
+    // The 'to' wallet. Null if it was retired (RETIRED)
+    @ManyToOne
+    @JoinColumn(name = "destination_wallet_id")
+    private Wallet destinationWallet;
+
     @Column(nullable = false)
-    private String transactionType; // e.g., "EARNED", "TRANSFERRED", "RETIRED"
+    private String transactionType; // "EARNED", "RETIRED", "TRANSFER"
 
-    @Column(precision = 19, scale = 4)
-    private BigDecimal amount; // The amount of this transaction
+    @Column(nullable = false, precision = 19, scale = 4)
+    private BigDecimal amount; // The amount of this specific transaction
 
-    // We can link to the specific credit(s) involved if needed
-    // @ManyToMany
-    // private List<CarbonCredit> creditsInvolved;
+    @Column(nullable = false)
+    private Instant timestamp;
+
+    @PrePersist
+    private void onPrePersist() {
+        this.timestamp = Instant.now();
+    }
 }

@@ -29,7 +29,8 @@ public class JourneyService {
             // 1. Read JSON file into a List of DTOs
             List<JourneyDTO> dtos = objectMapper.readValue(
                     inputStream,
-                    new TypeReference<List<JourneyDTO>>() {}
+                    new TypeReference<>() {
+                    }
             );
 
             // 2. Loop through each DTO
@@ -47,7 +48,7 @@ public class JourneyService {
 
                 if (creditsEarned.compareTo(BigDecimal.ZERO) > 0) {
                     walletService.createNewCreditToken(
-                            user.getWallet(),
+                            owner.getWallet(),
                             creditsEarned,
                             savedJourney
                     );

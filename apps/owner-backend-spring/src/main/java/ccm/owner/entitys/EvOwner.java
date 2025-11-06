@@ -29,7 +29,7 @@ public class EvOwner {
         if (this.wallet == null) {
             this.wallet = new Wallet();
             this.wallet.setOwner(this);
-            this.wallet.setBalance(java.math.BigDecimal.ZERO);
+            this.wallet.setTotalBalance(java.math.BigDecimal.ZERO);
         }
     }
 }
