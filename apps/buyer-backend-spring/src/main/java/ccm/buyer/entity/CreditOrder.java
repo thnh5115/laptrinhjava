@@ -1,8 +1,12 @@
 package ccm.buyer.entity;
 
+import ccm.buyer.enums.TrStatus;
 import jakarta.persistence.*;
-import lombok.*;
-import ccm.buyer.enums.OrderStatus;
+import lombok.AllArgsConstructor;    
+import lombok.Builder;            
+import lombok.Getter;             
+import lombok.NoArgsConstructor; 
+import lombok.Setter;               
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,37 +23,35 @@ public class CreditOrder {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "buyer_id")
+    @JoinColumn(name = "buyer_id", nullable = false)
     private Buyer buyer;
 
     @Column(nullable = false)
-    private Double amount;
+    private Integer credits; 
 
     @Column(nullable = false)
-    private Double price;
+    private Double pricePerUnit;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    private OrderStatus status;
+    @Column(nullable = false)
+    private TrStatus status;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    
     @PrePersist
-    public void prePersist() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-        if (this.status == null) {
-            this.status = OrderStatus.PENDING;
-        }
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+        if (status == null) status = TrStatus.PENDING;
     }
 
     @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

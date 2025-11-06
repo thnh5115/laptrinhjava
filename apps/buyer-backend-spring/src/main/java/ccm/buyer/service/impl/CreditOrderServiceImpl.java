@@ -1,166 +1,127 @@
 package ccm.buyer.service.impl;
 
-import ccm.buyer.entity.CreditOrder;
-import ccm.buyer.enums.OrderStatus;
-import ccm.buyer.repository.CreditOrderRepository;
+import ccm.buyer.dto.request.UpdateOrderStatusRequest;
 import ccm.buyer.dto.response.BuyerDashboardResponse;
 import ccm.buyer.dto.response.CreditOrderResponse;
+import ccm.buyer.entity.Buyer;
+import ccm.buyer.entity.CreditOrder;
+import ccm.buyer.enums.TrStatus;
+import ccm.buyer.exception.NotFoundException;
+import ccm.buyer.repository.BuyerRepository;
+import ccm.buyer.repository.CreditOrderRepository;
 import ccm.buyer.service.CreditOrderService;
-import jakarta.persistence.EntityNotFoundException;
+
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
+
 public class CreditOrderServiceImpl implements CreditOrderService {
 
-    private final CreditOrderRepository creditOrderRepository;
+    private final CreditOrderRepository orderRepo;
+    private final BuyerRepository buyerRepo;
 
-    private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED = new EnumMap<>(OrderStatus.class);
-    static {
-        ALLOWED.put(OrderStatus.PENDING,   EnumSet.of(OrderStatus.PAID, OrderStatus.CANCELLED));
-        ALLOWED.put(OrderStatus.PAID,      EnumSet.of(OrderStatus.APPROVED, OrderStatus.REJECTED));
-        ALLOWED.put(OrderStatus.APPROVED,  EnumSet.of(OrderStatus.COMPLETED));
-        ALLOWED.put(OrderStatus.REJECTED,  EnumSet.noneOf(OrderStatus.class));
-        ALLOWED.put(OrderStatus.CANCELLED, EnumSet.noneOf(OrderStatus.class));
-        ALLOWED.put(OrderStatus.COMPLETED, EnumSet.noneOf(OrderStatus.class));
+    @Override
+    public java.util.List<CreditOrder> getAllOrders() {
+        return orderRepo.findAll();
     }
 
     @Override
-    public List<CreditOrder> getAllOrders() {
-        return creditOrderRepository.findAll();
-    }
-
-    @Override
-    public CreditOrder getOrderById(Long id) {
-        return creditOrderRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Order not found: " + id));
+    public CreditOrder getOrder(Long id) {
+        return orderRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Order not found: " + id));
     }
 
     @Override
     public CreditOrder createOrder(CreditOrder order) {
-        order.setCreatedAt(LocalDateTime.now());
-        order.setStatus(OrderStatus.PENDING);
-        return creditOrderRepository.save(order);
+        if (order.getBuyer() != null && order.getBuyer().getId() != null) {
+            Buyer buyer = buyerRepo.findById(order.getBuyer().getId())
+                    .orElseThrow(() -> new NotFoundException("Buyer not found: " + order.getBuyer().getId()));
+            order.setBuyer(buyer);
+        }
+        return orderRepo.save(order);
     }
 
     @Override
     public CreditOrder updateOrder(Long id, CreditOrder order) {
-        CreditOrder existing = getOrderById(id);
-        existing.setAmount(order.getAmount());
-        existing.setPrice(order.getPrice());
-        existing.setUpdatedAt(LocalDateTime.now());
-        return creditOrderRepository.save(existing);
+        CreditOrder exist = getOrder(id);
+        if (order.getCredits() != null) exist.setCredits(order.getCredits());
+        if (order.getPricePerUnit() != null) exist.setPricePerUnit(order.getPricePerUnit());
+        if (order.getStatus() != null) exist.setStatus(order.getStatus());
+        if (order.getBuyer() != null && order.getBuyer().getId() != null) {
+            Buyer buyer = buyerRepo.findById(order.getBuyer().getId())
+                    .orElseThrow(() -> new NotFoundException("Buyer not found: " + order.getBuyer().getId()));
+            exist.setBuyer(buyer);
+        }
+        return orderRepo.save(exist);
+    }
+
+    @Override
+    public CreditOrder updateOrderStatus(Long id, TrStatus status) {
+        CreditOrder exist = getOrder(id);
+        exist.setStatus(status);
+        return orderRepo.save(exist);
     }
 
     @Override
     public void deleteOrder(Long id) {
-        creditOrderRepository.deleteById(id);
+        if (!orderRepo.existsById(id)) throw new NotFoundException("Order not found: " + id);
+        orderRepo.deleteById(id);
     }
 
     @Override
-    public CreditOrder updateOrderStatus(Long id, OrderStatus status) {
-        return applyStatusChange(id, status);
-    }
+    public java.util.List<CreditOrder> getOrdersByBuyer(Long buyerId) {
 
-    @Override
-    public CreditOrderResponse updateStatus(Long id, OrderStatus newStatus) {
-        CreditOrder saved = applyStatusChange(id, newStatus);
-        return CreditOrderResponse.of(saved);
-    }
-
-    private CreditOrder applyStatusChange(Long id, OrderStatus newStatus) {
-        CreditOrder order = creditOrderRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Order not found: " + id));
-
-        OrderStatus oldStatus = order.getStatus();
-
-        Set<OrderStatus> next = ALLOWED.getOrDefault(oldStatus, EnumSet.noneOf(OrderStatus.class));
-        if (!next.contains(newStatus)) {
-            throw new IllegalArgumentException("Invalid status transition: " + oldStatus + " -> " + newStatus);
-        }
-
-        order.setStatus(newStatus);
-        order.setUpdatedAt(LocalDateTime.now());
-        CreditOrder saved = creditOrderRepository.save(order);
-
-        Long buyerId = (saved.getBuyer() != null ? saved.getBuyer().getId() : null);
-        log.info("[AUDIT] Order status changed buyerId={}, orderId={}, {}->{} at {}",
-                buyerId, saved.getId(), oldStatus, newStatus, saved.getUpdatedAt());
-
-        return saved;
-    }
-
-    @Override
-    public List<CreditOrder> getOrdersByBuyer(Long buyerId) {
-        return creditOrderRepository.findByBuyer_Id(buyerId);
+        return orderRepo.findByBuyer_Id(buyerId, Pageable.unpaged()).getContent();
     }
 
     @Override
     public BuyerDashboardResponse getBuyerDashboard(Long buyerId) {
-        var list = creditOrderRepository.findByBuyer_Id(buyerId);
-        long totalOrders = list.size();
-        double totalAmount = list.stream().mapToDouble(CreditOrder::getAmount).sum();
-        double totalSpent = list.stream().mapToDouble(o -> o.getAmount() * o.getPrice()).sum();
-
-        long pending = list.stream().filter(o -> o.getStatus() == OrderStatus.PENDING).count();
-        long paid = list.stream().filter(o -> o.getStatus() == OrderStatus.PAID).count();
-        long approved = list.stream().filter(o -> o.getStatus() == OrderStatus.APPROVED).count();
-        long rejected = list.stream().filter(o -> o.getStatus() == OrderStatus.REJECTED).count();
-        long cancelled = list.stream().filter(o -> o.getStatus() == OrderStatus.CANCELLED).count();
-        long completed = list.stream().filter(o -> o.getStatus() == OrderStatus.COMPLETED).count();
-
+        long total = orderRepo.findByBuyer_Id(buyerId, Pageable.unpaged()).getTotalElements();
+        long pending = orderRepo.findByStatus(TrStatus.PENDING, Pageable.unpaged()).getTotalElements();
+        long completed = orderRepo.findByStatus(TrStatus.COMPLETED, Pageable.unpaged()).getTotalElements();
+        double spent = 0.0;
         return BuyerDashboardResponse.builder()
-                .totalOrders(totalOrders)
-                .totalAmount(totalAmount)
-                .totalSpent(totalSpent)
-                .pendingOrders(pending)
-                .paidOrders(paid)
-                .approvedOrders(approved)
-                .rejectedOrders(rejected)
-                .cancelledOrders(cancelled)
-                .completedOrders(completed)
+                .totalOrders(total)
+                .pendingTransactions(pending)
+                .completedTransactions(completed)
+                .totalSpent(spent)
                 .build();
     }
 
     @Override
     public Page<CreditOrderResponse> list(Long buyerId, String status, Pageable pageable) {
-        if (buyerId != null && status != null && !status.isBlank()) {
-            OrderStatus st = parseOrderStatus(status);
-            return creditOrderRepository
-                    .findByBuyer_IdAndStatus(buyerId, st, pageable)
-                    .map(CreditOrderResponse::of);
-        }
+        Page<CreditOrder> page;
         if (buyerId != null) {
-            return creditOrderRepository
-                    .findByBuyer_Id(buyerId, pageable)
-                    .map(CreditOrderResponse::of);
+            page = orderRepo.findByBuyer_Id(buyerId, pageable);
+        } else if (status != null && !status.isBlank()) {
+            TrStatus st = TrStatus.valueOf(status.toUpperCase(Locale.ROOT));
+            page = orderRepo.findByStatus(st, pageable);
+        } else {
+            page = orderRepo.findAll(pageable);
         }
-        if (status != null && !status.isBlank()) {
-            OrderStatus st = parseOrderStatus(status);
-            return creditOrderRepository
-                    .findByStatus(st, pageable)
-                    .map(CreditOrderResponse::of);
-        }
-        return creditOrderRepository.findAll(pageable).map(CreditOrderResponse::of);
+        return page.map(this::map);
     }
 
-    private OrderStatus parseOrderStatus(String status) {
-        try {
-            return OrderStatus.valueOf(status.trim().toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Invalid order status: " + status);
-        }
+    @Override
+    public CreditOrderResponse updateStatus(Long id, TrStatus newStatus) {
+        CreditOrder o = updateOrderStatus(id, newStatus);
+        return map(o);
+    }
+
+    private CreditOrderResponse map(CreditOrder o) {
+        return CreditOrderResponse.builder()
+                .id(o.getId())
+                .buyerId(o.getBuyer() != null ? o.getBuyer().getId() : null)
+                .quantity(o.getCredits() != null ? o.getCredits() : 0)
+                .price(o.getPricePerUnit() != null ? o.getPricePerUnit() : 0.0)
+                .status(o.getStatus())
+                .build();
     }
 }

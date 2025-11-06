@@ -1,41 +1,40 @@
 package ccm.buyer.controller;
 
+import ccm.buyer.dto.request.CreateTransactionRequest;
+import ccm.buyer.dto.request.UpdateTransactionStatusRequest;
 import ccm.buyer.dto.response.TransactionResponse;
+import ccm.buyer.enums.TrStatus;
 import ccm.buyer.service.TransactionService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/transactions")
+@RequestMapping("/api/buyer/transactions")
 @RequiredArgsConstructor
 public class TransactionController {
 
-    private final TransactionService transactionService;
+  private final TransactionService transactionService;
 
-    @GetMapping("/buyer/{buyerId}")
-    public ResponseEntity<List<TransactionResponse>> getTransactionsByBuyer(@PathVariable Long buyerId) {
-        return ResponseEntity.ok(transactionService.getTransactionsByBuyer(buyerId));
-    }
+  @GetMapping
+  public ResponseEntity<List<TransactionResponse>> list(@RequestParam(required = false) Long buyerId) {
+    return ResponseEntity.ok(transactionService.list(buyerId));
+  }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<TransactionResponse> getTransactionById(@PathVariable Long id) {
-        return ResponseEntity.ok(transactionService.getTransactionById(id));
-    }
+  @PostMapping
+  public ResponseEntity<TransactionResponse> create(@RequestBody CreateTransactionRequest req) {
+    return ResponseEntity.ok(transactionService.create(req));
+  }
 
-    @GetMapping
-    public ResponseEntity<Page<TransactionResponse>> list(
-            @RequestParam(required = false) Long buyerId,
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(transactionService.list(buyerId, status, pageable));
-    }
+  @PutMapping("/{id}/status")
+  public ResponseEntity<TransactionResponse> updateStatus(
+      @PathVariable Long id,
+      @RequestBody UpdateTransactionStatusRequest req
+  ) {
+    TrStatus status = (req.getStatus() == null) ? TrStatus.PENDING : req.getStatus();
+    return ResponseEntity.ok(transactionService.updateStatus(id, status));
+  }
 }

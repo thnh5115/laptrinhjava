@@ -1,65 +1,64 @@
 package ccm.buyer.service.impl;
 
+import ccm.buyer.dto.request.CreateTransactionRequest;
 import ccm.buyer.dto.response.TransactionResponse;
-import ccm.buyer.enums.TransactionStatus;
+import ccm.buyer.entity.Transaction;
+import ccm.buyer.enums.TrStatus;
+import ccm.buyer.exception.NotFoundException;
 import ccm.buyer.repository.TransactionRepository;
 import ccm.buyer.service.TransactionService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @Service
 @RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
 
-    private final TransactionRepository transactionRepository;
+  private final TransactionRepository transactionRepository;
 
-    @Override
-    public List<TransactionResponse> getTransactionsByBuyer(Long buyerId) {
-        return transactionRepository.findByOrder_Buyer_Id(buyerId)
-                .stream()
-                .map(TransactionResponse::of)
-                .collect(Collectors.toList());
-    }
+  @Override
+  public List<TransactionResponse> list(Long buyerId) {
+    List<Transaction> data = (buyerId == null)
+        ? transactionRepository.findAll()
+        : transactionRepository.findByBuyerId(buyerId);
+    return data.stream().map(this::map).toList();
+  }
 
-    @Override
-    public TransactionResponse getTransactionById(Long id) {
-        return transactionRepository.findById(id)
-                .map(TransactionResponse::of)
-                .orElseThrow(() -> new RuntimeException("Transaction not found"));
-    }
+  @Override
+  public TransactionResponse create(CreateTransactionRequest req) {
+    Transaction tx = Transaction.builder()
+        .buyerId(req.getBuyerId())
+        .listingId(req.getListingId())
+        .qty(req.getQty())
+        .amount(req.getAmount())
+        .status(TrStatus.PENDING)
+        .build();
+    tx = transactionRepository.save(tx);
+    return map(tx);
+  }
 
-    @Override
-    public Page<TransactionResponse> list(Long buyerId, String status, Pageable pageable) {
-        if (buyerId != null && status != null && !status.isBlank()) {
-            TransactionStatus st = parseTransactionStatus(status);
-            return transactionRepository
-                    .findByOrder_Buyer_IdAndStatus(buyerId, st, pageable)
-                    .map(TransactionResponse::of);
-        }
-        if (buyerId != null) {
-            return transactionRepository
-                    .findByOrder_Buyer_Id(buyerId, pageable)
-                    .map(TransactionResponse::of);
-        }
-        if (status != null && !status.isBlank()) {
-            TransactionStatus st = parseTransactionStatus(status);
-            return transactionRepository
-                    .findByStatus(st, pageable)
-                    .map(TransactionResponse::of);
-        }
-        return transactionRepository.findAll(pageable).map(TransactionResponse::of);
-    }
+  @Override
+  public TransactionResponse updateStatus(Long id, TrStatus status) {
+    Transaction tx = transactionRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Transaction not found: " + id));
+    tx.setStatus(status);
+    tx = transactionRepository.save(tx);
+    return map(tx);
+  }
 
-    private TransactionStatus parseTransactionStatus(String status) {
-        try {
-            return TransactionStatus.valueOf(status.trim().toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Invalid transaction status: " + status);
-        }
-    }
+  private TransactionResponse map(Transaction t) {
+    return TransactionResponse.builder()
+        .id(t.getId())
+        .buyerId(t.getBuyerId())
+        .listingId(t.getListingId())
+        .qty(t.getQty())
+        .amount(t.getAmount())
+        .status(t.getStatus())
+        .createdAt(t.getCreatedAt())
+        .build();
+  }
 }

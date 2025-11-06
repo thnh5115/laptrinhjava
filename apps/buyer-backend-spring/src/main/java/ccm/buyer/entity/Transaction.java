@@ -1,6 +1,6 @@
 package ccm.buyer.entity;
 
-import ccm.buyer.enums.TransactionStatus;
+import ccm.buyer.enums.TrStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -8,37 +8,20 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "transactions")
 @Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@NoArgsConstructor @AllArgsConstructor @Builder
 public class Transaction {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @ManyToOne(fetch=FetchType.LAZY, optional=false)
-    @JoinColumn(name="order_id")
-    private CreditOrder order;
+  private Long buyerId;
+  private Long listingId;
+  private Integer qty;
+  private Double amount;
 
-    @Column(nullable = false)
-    private Double amount;
+  @Enumerated(EnumType.STRING)
+  private TrStatus status;
 
-    @Column(name = "transaction_ref", nullable = false, unique = true, length = 100)
-    private String transactionRef;
+  private LocalDateTime createdAt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    private TransactionStatus status;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    public void onCreate(){
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void onUpdate(){ this.updatedAt = LocalDateTime.now(); }
+  @PrePersist void onCreate(){ if(createdAt==null) createdAt = LocalDateTime.now(); }
 }
