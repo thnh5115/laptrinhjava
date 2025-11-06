@@ -1,4 +1,4 @@
-package ccm.buyer.entity;
+package ccm.buyer.enums;
 
 public enum OrderStatus {
     PENDING,

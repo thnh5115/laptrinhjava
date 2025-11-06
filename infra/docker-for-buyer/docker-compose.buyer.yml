@@ -1,9 +1,9 @@
 version: "3.9"
 
 services:
-  buyer-mysql:
+  mysql-buyer:
     image: mysql:8.0
-    container_name: buyer-mysql
+    container_name: mysql-buyer
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: 123456
@@ -21,13 +21,13 @@ services:
     container_name: buyer-phpmyadmin
     restart: always
     environment:
-      PMA_HOST: buyer-mysql
+      PMA_HOST: mysql-buyer
       PMA_PORT: 3306
       MYSQL_ROOT_PASSWORD: 123456
     ports:
       - "8085:80"
     depends_on:
-      - buyer-mysql
+      - mysql-buyer
     networks:
       - buyer-net
 
@@ -39,13 +39,13 @@ services:
     restart: always
 
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://buyer-mysql:3306/carbon_buyer?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-buyer:3306/carbon_buyer?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
     ports:
       - "8081:8081"
     depends_on:
-      - buyer-mysql
+      - mysql-buyer
     networks:
       - buyer-net
     volumes:

@@ -1,29 +1,32 @@
 package ccm.buyer.dto.response;
 
 import ccm.buyer.entity.Transaction;
-import ccm.buyer.entity.TransactionStatus;
+import ccm.buyer.enums.TransactionStatus;
+import lombok.Builder;
+import lombok.Value;
+
 import java.time.LocalDateTime;
 
+@Value
+@Builder
 public class TransactionResponse {
-    private Long id;
-    private Long orderId;
-    private Double totalAmount;
-    private String paymentMethod;
-    private String transactionRef;
-    private TransactionStatus status;
-    private LocalDateTime createdAt;
+    Long id;
+    Long orderId;
+    Double amount;
+    String transactionRef;
+    TransactionStatus status;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
 
     public static TransactionResponse of(Transaction tx) {
-        TransactionResponse r = new TransactionResponse();
-        r.id = tx.getId();
-        r.orderId = tx.getOrder().getId();
-        r.totalAmount = tx.getTotalAmount();
-        r.paymentMethod = tx.getPaymentMethod();
-        r.transactionRef = tx.getTransactionRef();
-        r.status = tx.getStatus();
-        r.createdAt = tx.getCreatedAt();
-        return r;
+        return TransactionResponse.builder()
+                .id(tx.getId())
+                .orderId(tx.getOrder() != null ? tx.getOrder().getId() : null)
+                .amount(tx.getAmount())
+                .transactionRef(tx.getTransactionRef())
+                .status(tx.getStatus())
+                .createdAt(tx.getCreatedAt())
+                .updatedAt(tx.getUpdatedAt())
+                .build();
     }
-
-    // getters/setters ...
 }

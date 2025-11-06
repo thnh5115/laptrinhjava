@@ -3,6 +3,9 @@ package ccm.buyer.controller;
 import ccm.buyer.dto.response.TransactionResponse;
 import ccm.buyer.service.TransactionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,5 +26,16 @@ public class TransactionController {
     @GetMapping("/{id}")
     public ResponseEntity<TransactionResponse> getTransactionById(@PathVariable Long id) {
         return ResponseEntity.ok(transactionService.getTransactionById(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<TransactionResponse>> list(
+            @RequestParam(required = false) Long buyerId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(transactionService.list(buyerId, status, pageable));
     }
 }

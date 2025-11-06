@@ -1,8 +1,11 @@
 package ccm.buyer.service;
 
 import ccm.buyer.entity.CreditOrder;
-import ccm.buyer.entity.OrderStatus;
+import ccm.buyer.enums.OrderStatus;
 import ccm.buyer.dto.response.BuyerDashboardResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import ccm.buyer.dto.response.CreditOrderResponse;
 import java.util.List;
 
 public interface CreditOrderService {
@@ -14,4 +17,5 @@ public interface CreditOrderService {
     CreditOrder updateOrderStatus(Long id, OrderStatus status);
     void deleteOrder(Long id);
     BuyerDashboardResponse getBuyerDashboard(Long buyerId);
+    Page<CreditOrderResponse> list(Long buyerId, String status, Pageable pageable);
 }

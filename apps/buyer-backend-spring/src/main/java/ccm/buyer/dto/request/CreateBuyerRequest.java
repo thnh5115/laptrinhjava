@@ -24,4 +24,5 @@ public class CreateBuyerRequest {
 
     @NotBlank(message = "Status cannot be empty")
     private String status;
+    
 }

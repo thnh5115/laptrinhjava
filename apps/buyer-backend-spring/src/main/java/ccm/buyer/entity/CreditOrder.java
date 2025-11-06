@@ -2,7 +2,7 @@ package ccm.buyer.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
+import ccm.buyer.enums.OrderStatus;
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,7 +19,7 @@ public class CreditOrder {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "buyer_id", nullable = false)
+    @JoinColumn(name = "buyer_id")
     private Buyer buyer;
 
     @Column(nullable = false)
@@ -29,10 +29,10 @@ public class CreditOrder {
     private Double price;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 30)
     private OrderStatus status;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
@@ -48,7 +48,6 @@ public class CreditOrder {
         }
     }
 
-    
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();

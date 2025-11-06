@@ -1,5 +1,6 @@
 package ccm.buyer.entity;
 
+import ccm.buyer.enums.TransactionStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -12,23 +13,32 @@ public class Transaction {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch=FetchType.LAZY)
+    @ManyToOne(fetch=FetchType.LAZY, optional=false)
     @JoinColumn(name="order_id")
     private CreditOrder order;
 
-    private Double totalAmount;
-    private String paymentMethod;
+    @Column(nullable = false)
+    private Double amount;
+
+    @Column(name = "transaction_ref", nullable = false, unique = true, length = 100)
     private String transactionRef;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
     private TransactionStatus status;
 
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist
-    void onCreate(){ this.createdAt = this.updatedAt = LocalDateTime.now(); }
+    public void onCreate(){
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
 
     @PreUpdate
-    void onUpdate(){ this.updatedAt = LocalDateTime.now(); }
+    public void onUpdate(){ this.updatedAt = LocalDateTime.now(); }
 }

@@ -1,11 +1,11 @@
 package ccm.buyer.dto.request;
 
-import ccm.buyer.entity.OrderStatus;
-import lombok.Getter;
-import lombok.Setter;
+import ccm.buyer.enums.OrderStatus;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data  ;
 
-@Getter
-@Setter
+@Data
 public class UpdateOrderStatusRequest {
+    @NotNull
     private OrderStatus status;
 }

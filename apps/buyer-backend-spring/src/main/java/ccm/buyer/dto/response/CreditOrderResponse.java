@@ -1,7 +1,7 @@
 package ccm.buyer.dto.response;
 
 import ccm.buyer.entity.CreditOrder;
-import ccm.buyer.entity.OrderStatus;
+import ccm.buyer.enums.OrderStatus;
 import java.time.LocalDateTime;
 
 public class CreditOrderResponse {
