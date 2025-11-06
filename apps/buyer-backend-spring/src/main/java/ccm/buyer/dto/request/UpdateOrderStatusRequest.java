@@ -1,11 +1,16 @@
 package ccm.buyer.dto.request;
 
-import ccm.buyer.enums.OrderStatus;
-import jakarta.validation.constraints.NotNull;
-import lombok.Data  ;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import lombok.Data;
 
 @Data
 public class UpdateOrderStatusRequest {
-    @NotNull
-    private OrderStatus status;
+
+    @NotBlank(message = "status is required")
+    @Pattern(
+        regexp = "(?i)PENDING|PAID|APPROVED|REJECTED|CANCELLED",
+        message = "status must be one of: PENDING, PAID, APPROVED, REJECTED, CANCELLED"
+    )
+    private String status;
 }
