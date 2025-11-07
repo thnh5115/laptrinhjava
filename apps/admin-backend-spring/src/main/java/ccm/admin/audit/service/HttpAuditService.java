@@ -8,6 +8,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 @Service
+/** service - Service Implementation - Record and query audit logs */
+
+/** @summary <business action> */
+
 public class HttpAuditService {
 
     private final HttpAuditLogRepository repository;
@@ -16,9 +20,8 @@ public class HttpAuditService {
         this.repository = repository;
     }
 
-    /**
-     * Ghi log từ các tham số thô (dùng khi đã có sẵn dữ liệu).
-     */
+    
+    /** Process business logic - modifies data */
     public void log(String username,
                     String method,
                     String endpoint,
@@ -39,12 +42,8 @@ public class HttpAuditService {
         repository.save(log);
     }
 
-    /**
-     * Ghi log tiện dụng từ HttpServletRequest (dùng trong Interceptor).
-     * - Tự lấy username từ SecurityContext nếu không truyền.
-     * - Lấy IP từ X-Forwarded-For hoặc remoteAddr.
-     * - Lấy method, endpoint từ request.
-     */
+    
+    /** Process business logic - modifies data */
     public void logFromRequest(HttpServletRequest request,
                                String action,
                                String requestBody,
@@ -58,7 +57,7 @@ public class HttpAuditService {
         log(username, method, endpoint, action, ip, requestBody, status);
     }
 
-    // ===== Helpers =====
+    
 
     private String resolveUsername() {
         try {
@@ -73,7 +72,7 @@ public class HttpAuditService {
     private String extractClientIp(HttpServletRequest request) {
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
-            // Lấy IP đầu tiên trong chuỗi (client thật sự)
+            
             String first = xff.split(",")[0].trim();
             if (!first.isBlank()) return first;
         }
@@ -84,7 +83,7 @@ public class HttpAuditService {
 
     private String trimBody(String body) {
         if (body == null) return null;
-        // Tránh log body quá lớn (vd 10KB) – bạn có thể chỉnh tuỳ ý
+        
         int MAX = 10 * 1024;
         if (body.length() > MAX) {
             return body.substring(0, MAX) + "...[truncated]";

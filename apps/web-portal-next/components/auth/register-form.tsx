@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
-import { useToast } from "@ui/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { RoleSelector } from "./role-selector"
 // TODO: Import from proper location when validators are available
 // import { registerSchema, type RegisterFormData } from "@/lib/validators/register-schema"

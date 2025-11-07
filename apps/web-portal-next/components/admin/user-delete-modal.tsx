@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { AlertTriangle } from "lucide-react"
-import { useToast } from "@ui/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
 
 interface UserDeleteModalProps {
   open: boolean

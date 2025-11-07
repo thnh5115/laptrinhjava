@@ -6,19 +6,11 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-/**
- * Repository for Setting entity
- * Provides access to system configuration settings
- */
 @Repository
+/** repository - Service Interface - repository business logic and data operations */
+
 public interface SettingRepository extends JpaRepository<Setting, Long> {
     
-    /**
-     * Find a setting by its key name
-     * Used for retrieving specific configuration values
-     *
-     * @param keyName The unique key name of the setting
-     * @return Optional containing the setting if found
-     */
+    
     Optional<Setting> findByKeyName(String keyName);
 }

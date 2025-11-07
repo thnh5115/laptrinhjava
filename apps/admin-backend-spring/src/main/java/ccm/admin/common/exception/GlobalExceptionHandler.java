@@ -15,13 +15,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import java.nio.file.AccessDeniedException;
 import java.util.List;
 
-/**
- * Global Exception Handler
- * Handles all exceptions across the application and returns standardized error responses
- * Enhanced with logging for security monitoring
- */
 @RestControllerAdvice
 @Slf4j
+/** exception - Controller - REST endpoints for exception */
+
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -133,10 +130,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
-    /**
-     * Handle JPA EntityNotFoundException
-     * Returns 404 Not Found
-     */
+    
     @ExceptionHandler(jakarta.persistence.EntityNotFoundException.class)
     public ResponseEntity<ApiError> handleEntityNotFound(
             jakarta.persistence.EntityNotFoundException ex, HttpServletRequest req) {

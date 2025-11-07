@@ -14,16 +14,10 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Custom Authentication Entry Point - handles 401 Unauthorized errors
- * Triggered when:
- * - No JWT token provided
- * - Invalid JWT token
- * - Expired JWT token
- * - Malformed JWT token
- */
 @Component
 @Slf4j
+/** security - Component - Component for security */
+
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -42,7 +36,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
         log.warn("Authentication exception: {}", authException.getMessage());
 
-        // Build error response
+        
         Map<String, Object> errorDetails = new HashMap<>();
         errorDetails.put("timestamp", Instant.now().toString());
         errorDetails.put("status", HttpServletResponse.SC_UNAUTHORIZED);
@@ -50,12 +44,12 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         errorDetails.put("message", "Authentication failed: " + authException.getMessage());
         errorDetails.put("path", request.getRequestURI());
 
-        // Set response properties
+        
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        // Write JSON response
+        
         response.getWriter().write(objectMapper.writeValueAsString(errorDetails));
     }
 }

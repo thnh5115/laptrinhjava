@@ -14,15 +14,10 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Custom Access Denied Handler - handles 403 Forbidden errors
- * Triggered when:
- * - Authenticated user tries to access resource without proper role
- * - User with ROLE_USER tries to access /api/admin/**
- * - Missing @PreAuthorize permission
- */
 @Component
 @Slf4j
+/** security - Handler - Exception handler for security errors */
+
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -43,7 +38,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
                 request.getRemoteAddr(),
                 accessDeniedException.getMessage());
 
-        // Build error response
+        
         Map<String, Object> errorDetails = new HashMap<>();
         errorDetails.put("timestamp", Instant.now().toString());
         errorDetails.put("status", HttpServletResponse.SC_FORBIDDEN);
@@ -51,12 +46,12 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
         errorDetails.put("message", "Access denied: You don't have permission to access this resource");
         errorDetails.put("path", request.getRequestURI());
 
-        // Set response properties
+        
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        // Write JSON response
+        
         response.getWriter().write(objectMapper.writeValueAsString(errorDetails));
     }
 }

@@ -1,18 +1,48 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Leaf, TreePine, Car, Home } from "lucide-react"
-import { mockJourneys } from "@/lib/mock-data"
+import axiosClient from "@/lib/api/axiosClient"
+
+interface JourneyStats {
+  totalJourneys: number
+  verifiedJourneys: number
+  pendingJourneys: number
+  rejectedJourneys: number
+  totalCreditsGenerated: number
+  averageCreditsPerJourney: number
+}
 
 export function Co2ImpactDashboard() {
-  const totalCredits = mockJourneys
-    .filter((j) => j.status === "verified")
-    .reduce((sum, j) => sum + j.creditsGenerated, 0)
+  const [stats, setStats] = useState<JourneyStats | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Environmental equivalents
-  const treesPlanted = Math.round(totalCredits * 45) // 1 tCO2 = ~45 trees
-  const carsMilesOffset = Math.round(totalCredits * 2500) // 1 tCO2 = ~2500 car miles
-  const homesEnergy = Math.round(totalCredits * 0.12) // 1 tCO2 = ~0.12 homes yearly energy
+  useEffect(() => {
+    // Tải thống kê hành trình từ backend
+    const fetchStats = async () => {
+      try {
+        const res = await axiosClient.get('/admin/journeys/statistics')
+        setStats(res.data)
+      } catch (err) {
+        console.error('[CO2 Dashboard] Failed to load journey statistics:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchStats()
+  }, [])
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading CO2 impact data...</div>
+  }
+
+  const totalCredits = stats?.totalCreditsGenerated || 0
+
+  // Tính toán tác động môi trường từ tín chỉ carbon
+  const treesPlanted = Math.round(totalCredits * 45) // 1 tCO2 = ~45 cây
+  const carsMilesOffset = Math.round(totalCredits * 2500) // 1 tCO2 = ~2500 dặm xe
+  const homesEnergy = Math.round(totalCredits * 0.12) // 1 tCO2 = ~0.12 nhà năng lượng năm
 
   return (
     <div className="space-y-6">

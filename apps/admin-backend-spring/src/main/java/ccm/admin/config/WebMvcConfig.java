@@ -7,6 +7,8 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
+/** config - Configuration - Web MVC and CORS configuration */
+
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final AuditInterceptor auditInterceptor;
@@ -19,10 +21,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(auditInterceptor)
-                .addPathPatterns("/api/**")     // chỉ áp dụng cho các endpoint API
+                .addPathPatterns("/api/**")     
                 .excludePathPatterns(
-                        "/api/auth/**",          // bỏ qua login/signup
-                        "/actuator/**"           // bỏ qua healthcheck
+                        "/api/auth/**",          
+                        "/actuator/**"           
                 );
     }
 }

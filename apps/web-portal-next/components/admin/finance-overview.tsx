@@ -1,25 +1,99 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Wallet, TrendingUp, TrendingDown, DollarSign } from "lucide-react"
-import { mockTransactions, mockPayouts } from "@/lib/mock-data"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Wallet, TrendingUp, TrendingDown, DollarSign, AlertCircle } from "lucide-react"
+import { getKpis, getTransactionTrends, SystemKpi, TransactionTrend } from "@/lib/api/admin-analytics"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export function FinanceOverview() {
-  const totalRevenue = mockTransactions.reduce((sum, t) => sum + t.totalPrice, 0)
-  const platformFees = totalRevenue * 0.05 // 5% platform fee
-  const pendingPayouts = mockPayouts.filter((p) => p.status === "pending").reduce((sum, p) => sum + p.amount, 0)
+  const [kpis, setKpis] = useState<SystemKpi | null>(null)
+  const [trends, setTrends] = useState<TransactionTrend | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const currentYear = new Date().getFullYear()
+        const [kpisData, trendsData] = await Promise.all([
+          getKpis(),
+          getTransactionTrends(currentYear),
+        ])
+        setKpis(kpisData)
+        setTrends(trendsData)
+      } catch (err: any) {
+        console.error("Failed to fetch finance overview:", err)
+        setError(err?.response?.data?.message || "Failed to load finance data")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  // Transform trends data for chart
+  const revenueData = trends
+    ? Object.keys(trends.monthlyRevenue)
+        .sort()
+        .map((month) => {
+          const monthName = new Date(month + "-01").toLocaleDateString("en-US", { month: "short" })
+          return {
+            month: monthName,
+            revenue: trends.monthlyRevenue[month] || 0,
+            fees: (trends.monthlyRevenue[month] || 0) * 0.05, // 5% platform fee
+          }
+        })
+    : []
+
+  // Calculate platform metrics
+  const platformFees = kpis ? kpis.totalRevenue * 0.05 : 0
+  const pendingPayouts = 0 // TODO: Add payout API
   const platformBalance = platformFees - pendingPayouts
 
-  const revenueData = [
-    { month: "Jan", revenue: 1250, fees: 62.5 },
-    { month: "Feb", revenue: 1580, fees: 79 },
-    { month: "Mar", revenue: 1420, fees: 71 },
-    { month: "Apr", revenue: 1890, fees: 94.5 },
-    { month: "May", revenue: 2150, fees: 107.5 },
-    { month: "Jun", revenue: 2480, fees: 124 },
-  ]
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="space-y-0 pb-2">
+                <Skeleton className="h-4 w-32" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-24 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-4 w-64 mt-2" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -41,8 +115,8 @@ export function FinanceOverview() {
             <TrendingUp className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">All transactions</p>
+            <div className="text-2xl font-bold">${(kpis?.totalRevenue ?? 0).toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">{kpis?.totalTransactions ?? 0} transactions</p>
           </CardContent>
         </Card>
 
@@ -75,42 +149,48 @@ export function FinanceOverview() {
           <CardDescription>Monthly revenue and platform fees collected</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer
-            config={{
-              revenue: {
-                label: "Revenue",
-                color: "hsl(var(--chart-1))",
-              },
-              fees: {
-                label: "Fees",
-                color: "hsl(var(--chart-2))",
-              },
-            }}
-            className="h-[300px]"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="var(--color-chart-1)"
-                  fill="var(--color-chart-1)"
-                  fillOpacity={0.2}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="fees"
-                  stroke="var(--color-chart-2)"
-                  fill="var(--color-chart-2)"
-                  fillOpacity={0.2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+          {revenueData.length === 0 ? (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <p>No revenue data available</p>
+            </div>
+          ) : (
+            <ChartContainer
+              config={{
+                revenue: {
+                  label: "Revenue",
+                  color: "hsl(var(--chart-1))",
+                },
+                fees: {
+                  label: "Fees",
+                  color: "hsl(var(--chart-2))",
+                },
+              }}
+              className="h-[300px]"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="month" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="var(--color-revenue)"
+                    fill="var(--color-revenue)"
+                    fillOpacity={0.2}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="fees"
+                    stroke="var(--color-fees)"
+                    fill="var(--color-fees)"
+                    fillOpacity={0.2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          )}
         </CardContent>
       </Card>
     </div>

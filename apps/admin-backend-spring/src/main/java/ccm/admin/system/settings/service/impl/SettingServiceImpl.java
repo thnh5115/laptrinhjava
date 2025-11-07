@@ -14,17 +14,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Implementation of SettingService
- * Manages system configuration settings
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
+/** Settings - Service Implementation - Business logic for Settings operations */
+
 public class SettingServiceImpl implements SettingService {
 
     private final SettingRepository settingRepository;
 
+    /** Get all records - transactional */
     @Override
     @Transactional(readOnly = true)
     public List<SettingResponse> getAllSettings() {
@@ -39,6 +38,7 @@ public class SettingServiceImpl implements SettingService {
         return responses;
     }
 
+    /** Update existing record - transactional */
     @Override
     @Transactional
     public SettingResponse updateSetting(Long id, UpdateSettingRequest request) {
@@ -59,6 +59,7 @@ public class SettingServiceImpl implements SettingService {
         return mapToResponse(setting);
     }
 
+    /** Process business logic - transactional */
     @Override
     @Transactional(readOnly = true)
     public SettingResponse getSettingByKey(String keyName) {
@@ -70,9 +71,7 @@ public class SettingServiceImpl implements SettingService {
         return mapToResponse(setting);
     }
 
-    /**
-     * Map Setting entity to SettingResponse DTO
-     */
+    
     private SettingResponse mapToResponse(Setting setting) {
         return SettingResponse.builder()
                 .id(setting.getId())

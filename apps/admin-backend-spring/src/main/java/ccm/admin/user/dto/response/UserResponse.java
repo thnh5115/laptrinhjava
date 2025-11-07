@@ -1,13 +1,15 @@
 package ccm.admin.user.dto.response;
 
+/** response - Response DTO - Response model for response data */
+
 public class UserResponse {
     private Long id;
     private String email;
     private String fullName;
-    private String role;   // ADMIN/BUYER/EV_OWNER/AUDITOR
-    private String status; // ACTIVE/SUSPENDED/BANNED
+    private String role;   
+    private String status; 
 
-    // Constructors
+    
     public UserResponse() {}
 
     public UserResponse(Long id, String email, String fullName, String role, String status) {
@@ -18,7 +20,7 @@ public class UserResponse {
         this.status = status;
     }
 
-    // Getters and Setters
+    
     public Long getId() {
         return id;
     }
@@ -59,7 +61,7 @@ public class UserResponse {
         this.status = status;
     }
 
-    // Builder
+    
     public static UserResponseBuilder builder() {
         return new UserResponseBuilder();
     }

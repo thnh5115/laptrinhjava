@@ -9,16 +9,10 @@ import org.springframework.web.util.ContentCachingRequestWrapper;
 
 import java.io.IOException;
 
-/**
- * Filter để wrap request thành ContentCachingRequestWrapper
- * để có thể đọc request body nhiều lần (cho audit logging)
- * 
- * FIXED: Wraps ALL requests. The 500 errors on protected endpoints were caused by
- * LazyInitializationException in UserAdminService, NOT by this filter.
- * Fix applied: Added @Transactional(readOnly = true) to UserAdminService.searchUsers()
- */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
+/** web - Filter - Request filter for web processing */
+
 public class RequestCachingFilter implements Filter {
 
     @Override
@@ -26,7 +20,7 @@ public class RequestCachingFilter implements Filter {
             throws IOException, ServletException {
         
         if (request instanceof HttpServletRequest httpRequest) {
-            // Wrap ALL requests to enable request body re-reading for audit logging
+            
             ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(httpRequest);
             chain.doFilter(wrappedRequest, response);
         } else {

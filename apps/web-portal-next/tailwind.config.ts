@@ -7,8 +7,6 @@ const config: Config = {
     "./components/**/*.{ts,tsx,js,jsx}",
     "./lib/**/*.{ts,tsx,js,jsx}",
     "./hooks/**/*.{ts,tsx,js,jsx}",
-    // Include workspace packages if still using them
-    "../../packages/ui/src/**/*.{ts,tsx,js,jsx}",
   ],
   theme: {
     extend: {},

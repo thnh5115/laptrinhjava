@@ -4,15 +4,13 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * Detailed response for individual dispute view
- * Contains all information including description and admin notes
- */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+/** response - Response DTO - Response model for response data */
+
 public class DisputeDetailResponse {
     
     private Long id;
