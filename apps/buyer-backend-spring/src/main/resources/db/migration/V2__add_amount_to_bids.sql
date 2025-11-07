@@ -1,0 +1,3 @@
+ALTER TABLE bids
+    ADD COLUMN amount DOUBLE NOT NULL DEFAULT 0
+    AFTER buyer_id;

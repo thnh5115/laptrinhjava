@@ -4,30 +4,42 @@ import ccm.buyer.entity.Auction;
 import ccm.buyer.entity.Bid;
 import ccm.buyer.entity.Buyer;
 import ccm.buyer.enums.BidStatus;
+import ccm.buyer.repository.AuctionRepository;
 import ccm.buyer.repository.BidRepository;
 import ccm.buyer.repository.BuyerRepository;
+import ccm.buyer.service.AuctionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-public class AuctionServiceImpl {
+@Transactional
+public class AuctionServiceImpl implements AuctionService {
 
+  private final AuctionRepository auctionRepository;
   private final BidRepository bidRepository;
   private final BuyerRepository buyerRepository;
 
-  public Bid placeBid(Auction auction, Long buyerId, Double amount) {
+  @Override
+  public Bid placeBid(Long auctionId, Long buyerId, Double amount) {
 
-    Double minNext = (auction.getStepPrice() == null ? 0.0 : auction.getStepPrice());
+    if (amount == null || amount <= 0) {
+      throw new IllegalArgumentException("Bid amount must be > 0");
+    }
 
-    Buyer buyer = buyerRepository.findById(buyerId).orElseThrow();
+    Auction auction = auctionRepository.findById(auctionId)
+        .orElseThrow(() -> new RuntimeException("Auction not found"));
+    Buyer buyer = buyerRepository.findById(buyerId)
+        .orElseThrow(() -> new RuntimeException("Buyer not found"));
+
     Bid bid = Bid.builder()
         .auction(auction)
         .buyer(buyer)
         .amount(amount)
-        .status(BidStatus.OPEN)
+        .status(BidStatus.OPEN) 
         .createdAt(LocalDateTime.now())
         .build();
     return bidRepository.save(bid);

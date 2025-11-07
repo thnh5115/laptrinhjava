@@ -1,56 +1,58 @@
-version: "3.9"
-
 services:
   mysql-buyer:
     image: mysql:8.0
     container_name: mysql-buyer
-    restart: always
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: 123456
       MYSQL_DATABASE: carbon_buyer
-      
+      TZ: Asia/Ho_Chi_Minh
     ports:
       - "3307:3306"
     volumes:
       - ./mysql_data:/var/lib/mysql
-    networks:
-      - buyer-net
+    networks: [buyer-net]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   buyer-phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: buyer-phpmyadmin
-    restart: always
+    restart: unless-stopped
     environment:
       PMA_HOST: mysql-buyer
       PMA_PORT: 3306
       MYSQL_ROOT_PASSWORD: 123456
+      TZ: Asia/Ho_Chi_Minh
     ports:
       - "8085:80"
     depends_on:
-      - mysql-buyer
-    networks:
-      - buyer-net
+      mysql-buyer:
+        condition: service_healthy
+    networks: [buyer-net]
 
   buyer-backend:
     build:
-      context: ../../
+      context: ../../                 #ROOT repo (C:\laptrinhjava)
       dockerfile: apps/buyer-backend-spring/Dockerfile
     container_name: buyer-backend
-    restart: always
-
+    restart: unless-stopped
     environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: "8081"
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-buyer:3306/carbon_buyer?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
+      TZ: Asia/Ho_Chi_Minh
     ports:
       - "8081:8081"
     depends_on:
-      - mysql-buyer
-    networks:
-      - buyer-net
-    volumes:
-      # Giúp Maven cache dependency (như admin backend)
-      - ~/.m2:/root/.m2
+      mysql-buyer:
+        condition: service_healthy
+    networks: [buyer-net]
 
 networks:
   buyer-net:
