@@ -21,46 +21,38 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Implementation of AnalyticsService
- * Aggregates data from multiple repositories to provide dashboard analytics
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
+/** Analytics - Service Implementation - Business logic for Analytics operations */
+
 public class AnalyticsServiceImpl implements AnalyticsService {
 
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private final DisputeRepository disputeRepository;
 
-    /**
-     * Get system-wide KPIs (dashboard metrics)
-     * 
-     * PR-5 (ANA-002): Cached for 10 minutes to reduce database load
-     * Aggregates: user count, transaction count, revenue, dispute rate
-     * 
-     * Performance: ~600ms → ~5ms (95%+ improvement)
-     */
+    
+    /** Process business logic - cached result, transactional */
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "analytics:kpis", unless = "#result == null")
     public SystemKpiResponse getSystemKpis() {
         log.info("Calculating system KPIs");
 
-        // Count total users
+        
         long totalUsers = userRepository.count();
         log.debug("Total users: {}", totalUsers);
 
-        // Count total transactions
+        
         long totalTransactions = transactionRepository.count();
         log.debug("Total transactions: {}", totalTransactions);
 
-        // Count total disputes
+        
         long totalDisputes = disputeRepository.count();
         log.debug("Total disputes: {}", totalDisputes);
 
-        // Calculate total revenue (only from APPROVED transactions)
+        
         List<Transaction> allTransactions = transactionRepository.findAll();
         double totalRevenue = allTransactions.stream()
                 .filter(t -> t.getStatus() == TransactionStatus.APPROVED)
@@ -68,7 +60,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 .sum();
         log.debug("Total revenue: ${}", totalRevenue);
 
-        // Calculate dispute rate (percentage of transactions with disputes)
+        
         double disputeRate = totalTransactions == 0 ? 0.0 :
                 ((double) totalDisputes / totalTransactions) * 100;
         log.debug("Dispute rate: {}%", disputeRate);
@@ -85,14 +77,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         return response;
     }
 
-    /**
-     * Get transaction trends by month for a specific year
-     * 
-     * PR-5 (ANA-002): Cached by year for 10 minutes
-     * Cache key includes year parameter
-     * 
-     * Performance: ~900ms → ~5ms for cached data
-     */
+    
+    /** Process business logic - cached result, transactional */
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "analytics:trends", key = "#year", unless = "#result == null")
@@ -103,18 +89,18 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         Map<String, Long> monthlyTransactions = new LinkedHashMap<>();
         Map<String, Double> monthlyRevenue = new LinkedHashMap<>();
 
-        // Iterate through all 12 months
+        
         for (int month = 1; month <= 12; month++) {
             final int currentMonth = month;
             String monthKey = String.format("%d-%02d", year, month);
 
-            // Count transactions for this month
+            
             long transactionCount = allTransactions.stream()
                     .filter(t -> t.getCreatedAt().getYear() == year 
                               && t.getCreatedAt().getMonthValue() == currentMonth)
                     .count();
 
-            // Calculate revenue for this month (only APPROVED transactions)
+            
             double revenue = allTransactions.stream()
                     .filter(t -> t.getStatus() == TransactionStatus.APPROVED
                               && t.getCreatedAt().getYear() == year
@@ -137,14 +123,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         return response;
     }
 
-    /**
-     * Get dispute ratio statistics (breakdown by status)
-     * 
-     * PR-5 (ANA-002): Cached for 10 minutes
-     * Reduces load on dispute table
-     * 
-     * Performance: ~300ms → ~5ms
-     */
+    
+    /** Process business logic - cached result, transactional */
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "analytics:disputes", unless = "#result == null")
@@ -153,7 +133,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
         List<Dispute> allDisputes = disputeRepository.findAll();
 
-        // Count disputes by status
+        
         long openCount = allDisputes.stream()
                 .filter(d -> d.getStatus() == DisputeStatus.OPEN)
                 .count();

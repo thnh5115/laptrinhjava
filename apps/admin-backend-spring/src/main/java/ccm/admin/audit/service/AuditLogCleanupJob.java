@@ -10,13 +10,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
-/**
- * AUD-002: Audit Log Cleanup Job
- * Automatically deletes audit logs older than configured retention period
- * Runs daily at 2 AM to minimize impact on production
- */
 @Component
 @Slf4j
+/** service - Component - Component for service */
+
 public class AuditLogCleanupJob {
 
     private final HttpAuditLogRepository auditLogRepository;
@@ -28,10 +25,7 @@ public class AuditLogCleanupJob {
         this.auditLogRepository = auditLogRepository;
     }
 
-    /**
-     * Delete audit logs older than retention period
-     * Runs daily at 2:00 AM (cron: second minute hour day month weekday)
-     */
+    
     @Scheduled(cron = "0 0 2 * * *")
     @Transactional
     public void cleanupOldAuditLogs() {
@@ -53,12 +47,7 @@ public class AuditLogCleanupJob {
         }
     }
     
-    /**
-     * Manual cleanup method for testing or manual execution
-     * 
-     * @param daysToRetain Number of days to retain (older entries will be deleted)
-     * @return Number of deleted entries
-     */
+    
     public int cleanupManual(int daysToRetain) {
         Instant cutoffDate = Instant.now().minus(daysToRetain, ChronoUnit.DAYS);
         

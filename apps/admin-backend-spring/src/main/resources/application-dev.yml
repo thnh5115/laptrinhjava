@@ -33,5 +33,4 @@ app:
     jwt:
       secret: ${JWT_SECRET:my-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256}
       expiration-ms: ${JWT_EXPIRATION_MS:900000} # 15 minutes (15 * 60 * 1000)
-      # For production: Consider implementing refresh tokens with 7-day expiration
-      # refresh-expiration-ms: 604800000 # 7 days (7 * 24 * 60 * 60 * 1000)
+      refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000} # 7 days (7 * 24 * 60 * 60 * 1000)

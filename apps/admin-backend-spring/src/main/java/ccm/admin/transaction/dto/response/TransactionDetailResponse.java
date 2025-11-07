@@ -4,9 +4,6 @@ import ccm.admin.transaction.entity.Transaction;
 
 import java.time.LocalDateTime;
 
-/**
- * Detailed response for transaction detail view
- */
 public record TransactionDetailResponse(
     Long id,
     String transactionCode,

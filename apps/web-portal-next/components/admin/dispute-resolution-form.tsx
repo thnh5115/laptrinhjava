@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { useToast } from "@ui/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
 
 interface DisputeResolutionFormProps {
   disputeId: string

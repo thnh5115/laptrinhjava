@@ -1,13 +1,10 @@
 package ccm.admin.listing.entity.enums;
 
-/**
- * Status of a carbon credit listing
- * - PENDING: Newly created, awaiting admin approval
- * - APPROVED: Admin approved, visible to buyers
- * - REJECTED: Admin rejected, not visible to buyers
- */
+/** enums - Enum - Status states for enums */
+
 public enum ListingStatus {
-    PENDING,
-    APPROVED,
-    REJECTED
+    PENDING,     // Submitted, waiting for admin approval
+    APPROVED,    // Approved and visible on marketplace
+    REJECTED,    // Rejected by admin
+    DELISTED     // Removed from marketplace by admin
 }

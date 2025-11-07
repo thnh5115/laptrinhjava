@@ -4,15 +4,13 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * Response DTO for Setting entity
- * Used for GET endpoints to return setting information
- */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+/** response - Response DTO - Response model for response data */
+
 public class SettingResponse {
     
     private Long id;

@@ -7,38 +7,46 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/**
- * Repository for Transaction entity with dynamic query support
- */
+import java.math.BigDecimal;
+
+/** repository - Service Interface - repository business logic and data operations */
+
 public interface TransactionRepository extends JpaRepository<Transaction, Long>,
         JpaSpecificationExecutor<Transaction> {
     
-    /**
-     * Count transactions by status
-     * 
-     * @param status Transaction status to filter by
-     * @return Number of transactions with the given status
-     */
+    
     long countByStatus(TransactionStatus status);
     
-    /**
-     * Calculate total revenue from APPROVED transactions only
-     * Uses COALESCE to return 0.0 instead of NULL when no transactions exist
-     * 
-     * CRITICAL: Only counts APPROVED transactions for accurate financial reporting
-     * 
-     * @param status Transaction status (should be APPROVED)
-     * @return Total revenue from transactions with given status, never null
-     */
+    
     @Query("SELECT COALESCE(SUM(t.totalPrice), 0.0) FROM Transaction t WHERE t.status = :status")
     Double sumTotalPriceByStatus(@Param("status") TransactionStatus status);
     
-    /**
-     * Calculate total revenue from APPROVED transactions only (convenience method)
-     * 
-     * @return Total revenue from approved transactions
-     */
+    
     default Double calculateApprovedRevenue() {
         return sumTotalPriceByStatus(TransactionStatus.APPROVED);
     }
+    
+    /**
+     * Count transactions involving a specific user (as buyer or seller)
+     * @param userEmail The user email
+     * @return Number of transactions
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t WHERE t.buyerEmail = :userEmail OR t.sellerEmail = :userEmail")
+    long countByUserEmail(@Param("userEmail") String userEmail);
+    
+    /**
+     * Sum total earnings for a seller (COMPLETED transactions)
+     * @param sellerEmail The seller user email
+     * @return Total earnings
+     */
+    @Query("SELECT COALESCE(SUM(t.totalPrice), 0) FROM Transaction t WHERE t.sellerEmail = :sellerEmail AND t.status = 'COMPLETED'")
+    BigDecimal sumEarningsBySellerEmail(@Param("sellerEmail") String sellerEmail);
+    
+    /**
+     * Sum total spending for a buyer (COMPLETED transactions)
+     * @param buyerEmail The buyer user email
+     * @return Total spending
+     */
+    @Query("SELECT COALESCE(SUM(t.totalPrice), 0) FROM Transaction t WHERE t.buyerEmail = :buyerEmail AND t.status = 'COMPLETED'")
+    BigDecimal sumSpendingByBuyerEmail(@Param("buyerEmail") String buyerEmail);
 }

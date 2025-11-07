@@ -10,11 +10,6 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Carbon Credit Listing Entity
- * Represents a carbon credit listing created by EV Owners
- * Admin can approve/reject listings
- */
 @Entity
 @Table(name = "listings")
 @Getter
@@ -23,6 +18,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Hidden
+/** entity - Entity - JPA entity for entity table */
+
 public class Listing {
 
     @Id
@@ -58,6 +55,18 @@ public class Listing {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    /** Admin who approved/rejected the listing */
+    @Column(name = "approved_by")
+    private Long approvedBy;
+
+    /** When the listing was approved/rejected */
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    /** Reason for rejection or delisting */
+    @Column(name = "reject_reason", columnDefinition = "TEXT")
+    private String rejectReason;
 
     @PrePersist
     protected void onCreate() {

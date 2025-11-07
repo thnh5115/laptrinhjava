@@ -9,6 +9,8 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+/** response - Response DTO - Response model for response data */
+
 public class AuditChartResponse {
     private Map<String, Long> requestsByDay;
     private Map<String, Long> topEndpoints;

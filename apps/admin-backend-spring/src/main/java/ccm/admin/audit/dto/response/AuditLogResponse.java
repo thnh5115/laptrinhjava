@@ -9,6 +9,8 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+/** response - Response DTO - Response model for response data */
+
 public class AuditLogResponse {
     private Long id;
     private String username;
