@@ -16,16 +16,17 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+/** User - Service Implementation - Business logic for User operations */
+
+/** @summary <business action> */
+
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepo;
     private final RoleRepository roleRepo;
     private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Convert User entity to UserResponse DTO
-     * Null-safe to prevent NPE
-     */
+    
     private UserResponse toDTO(User u) {
         return UserResponse.builder()
                 .id(u.getId())
@@ -36,12 +37,14 @@ public class UserServiceImpl implements UserService {
                 .build();
     }
 
+    /** Get all records - transactional */
     @Override
     @Transactional(readOnly = true)
     public List<UserResponse> findAll() {
         return userRepo.findAll().stream().map(this::toDTO).toList();
     }
 
+    /** Find by ID - transactional */
     @Override
     @Transactional(readOnly = true)
     public UserResponse findById(Long id) {
@@ -52,8 +55,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics:kpis", allEntries = true)
+    /** Create new record - modifies data */
     public UserResponse create(CreateUserRequest req) {
-        // USER-002 FIX: Improved duplicate email error message
+        
         if (userRepo.existsByEmail(req.email())) {
             throw new IllegalArgumentException(
                 String.format("Email '%s' is already registered. Please use a different email address.", req.email()));
@@ -73,6 +78,7 @@ public class UserServiceImpl implements UserService {
         return toDTO(u);
     }
 
+    /** Process business logic - transactional */
     @Override
     @Transactional
     public UserResponse suspend(Long id) {
@@ -85,6 +91,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics:kpis", allEntries = true)
+    /** Update status - modifies data */
     public UserResponse updateStatus(Long id, AccountStatus newStatus) {
         var u = userRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
@@ -95,6 +103,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics:kpis", allEntries = true)
+    /** Update user role - modifies data */
     public UserResponse updateRole(Long id, String roleName) {
         var u = userRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
@@ -107,6 +117,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics:kpis", allEntries = true)
+    /** Delete record - deletes from DB */
     public void delete(Long id) {
         if (!userRepo.existsById(id)) {
             throw new IllegalArgumentException("User not found: " + id);

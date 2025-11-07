@@ -6,10 +6,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * PR-2 (TX-004): Audit trail for transaction status changes
- * Tracks who changed transaction status, when, and what changed
- */
 @Entity
 @Table(name = "transaction_audit_logs")
 @Getter
@@ -17,6 +13,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+/** entity - Entity - JPA entity for entity table */
+
 public class TransactionAuditLog {
 
     @Id
@@ -38,13 +36,13 @@ public class TransactionAuditLog {
     private TransactionStatus newStatus;
 
     @Column(name = "changed_by", nullable = false)
-    private String changedBy; // Email of admin who made the change
+    private String changedBy; 
 
     @Column(name = "changed_at", nullable = false)
     private LocalDateTime changedAt;
 
     @Column(name = "reason", length = 500)
-    private String reason; // Optional reason for status change
+    private String reason; 
 
     @PrePersist
     protected void onCreate() {

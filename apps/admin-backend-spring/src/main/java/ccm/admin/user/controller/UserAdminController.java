@@ -2,6 +2,7 @@ package ccm.admin.user.controller;
 
 import ccm.admin.user.dto.request.UserRoleUpdateRequest;
 import ccm.admin.user.dto.request.UserStatusUpdateRequest;
+import ccm.admin.user.dto.response.UserOverviewResponse;
 import ccm.admin.user.dto.response.UserResponse;
 import ccm.admin.user.dto.response.UserSummaryResponse;
 import ccm.admin.user.entity.User;
@@ -18,6 +19,11 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/admin/users")
+@PreAuthorize("hasRole('ADMIN')")
+/**
+ * User - REST Controller - Admin endpoints for User management
+ */
+
 public class UserAdminController {
 
     private final UserAdminService userAdminService;
@@ -44,40 +50,19 @@ public class UserAdminController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * GET /api/admin/users/{id}
-     * Get user details by ID
-     * 
-     * @param id User ID
-     * @return UserResponse with full user details
-     */
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> getUserById(@PathVariable("id") Long id) {
         UserResponse user = userService.findById(id);
         return ResponseEntity.ok(user);
     }
 
-    /**
-     * PUT /api/admin/users/{id}/status
-     * Update user account status (ACTIVE, SUSPENDED, BANNED)
-     * 
-     * Request body example:
-     * {
-     *   "status": "ACTIVE"
-     * }
-     * 
-     * @param id User ID
-     * @param req Request with new status value
-     * @return Updated UserResponse
-     */
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> updateStatus(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UserStatusUpdateRequest req) {
-        
-        // Validate and parse status
+
         AccountStatus newStatus;
         try {
             if (req == null || req.status() == null || req.status().isBlank()) {
@@ -86,52 +71,47 @@ public class UserAdminController {
             newStatus = AccountStatus.valueOf(req.status().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
-                "Invalid status. Valid values: ACTIVE, SUSPENDED, BANNED");
+                    "Invalid status. Valid values: ACTIVE, SUSPENDED, BANNED");
         }
-        
+
         UserResponse updated = userService.updateStatus(id, newStatus);
         return ResponseEntity.ok(updated);
     }
 
-    /**
-     * PUT /api/admin/users/{id}/role
-     * Update user role (ADMIN, AUDITOR, BUYER, EV_OWNER)
-     * 
-     * Request body example:
-     * {
-     *   "role": "BUYER"
-     * }
-     * 
-     * @param id User ID
-     * @param req Request with new role name
-     * @param authentication Current authenticated user
-     * @return Updated UserResponse
-     */
     @PutMapping("/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> updateRole(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UserRoleUpdateRequest req,
             Authentication authentication) {
-        
-        // Validate role input
+
         if (req == null || req.role() == null || req.role().isBlank()) {
             throw new IllegalArgumentException("Role is required");
         }
-        
-        // USER-003 FIX: Prevent admin from removing their own ADMIN role
+
         String currentUsername = authentication.getName();
         User currentUser = userRepository.findByEmail(currentUsername)
                 .orElseThrow(() -> new IllegalStateException("Invalid session - user not found"));
-        
-        // Check if trying to demote self
+
         if (currentUser.getId().equals(id) && !"ADMIN".equalsIgnoreCase(req.role().trim())) {
             throw new IllegalArgumentException(
-                "Cannot remove ADMIN role from yourself. Ask another admin to change your role.");
+                    "Cannot remove ADMIN role from yourself. Ask another admin to change your role.");
         }
-        
+
         String roleName = req.role().trim();
         UserResponse updated = userService.updateRole(id, roleName);
         return ResponseEntity.ok(updated);
+    }
+
+    /**
+     * GET /api/admin/users/{id}/overview - Get comprehensive user overview
+     * Returns aggregated statistics about user's activity (READ-ONLY) Includes:
+     * listings, transactions, disputes, journeys, wallet, payouts
+     */
+    @GetMapping("/{id}/overview")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserOverviewResponse> getUserOverview(@PathVariable("id") Long id) {
+        UserOverviewResponse overview = userAdminService.getUserOverview(id);
+        return ResponseEntity.ok(overview);
     }
 }

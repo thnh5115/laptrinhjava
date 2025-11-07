@@ -9,6 +9,8 @@ import java.time.Instant;
            @Index(name = "idx_http_audit_created_at", columnList = "created_at"),
            @Index(name = "idx_http_audit_username", columnList = "username")
        })
+/** entity - Entity - JPA entity for entity table */
+
 public class HttpAuditLog {
 
     @Id
@@ -16,36 +18,36 @@ public class HttpAuditLog {
     private Long id;
 
     @Column(nullable = false, length = 100)
-    private String username;          // admin thực hiện
+    private String username;          
 
     @Column(nullable = false, length = 10)
-    private String method;            // GET/POST/PUT/DELETE
+    private String method;            
 
     @Column(nullable = false, length = 255)
-    private String endpoint;          // /api/users, /api/listings/123 ...
+    private String endpoint;          
 
     @Column(nullable = false, length = 50)
-    private String action;            // create/update/delete/approve/...
+    private String action;            
 
     @Column(length = 45)
-    private String ip;                // IPv4/IPv6
+    private String ip;                
 
     @Lob
     @Column(name = "request_body", columnDefinition = "LONGTEXT")
-    private String requestBody;       // body request (tùy chọn)
+    private String requestBody;       
 
     @Column
-    private Integer status;           // 200, 201, 400, 403, 500...
+    private Integer status;           
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;        // thời điểm ghi log (UTC)
+    private Instant createdAt;        
 
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) createdAt = Instant.now();
     }
 
-    // ===== Getters/Setters =====
+    
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

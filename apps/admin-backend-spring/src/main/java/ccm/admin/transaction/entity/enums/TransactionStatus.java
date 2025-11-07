@@ -1,10 +1,9 @@
 package ccm.admin.transaction.entity.enums;
 
-/**
- * Transaction status enumeration
- */
+/** enums - Enum - Status states for enums */
+
 public enum TransactionStatus {
-    PENDING,    // Chờ xử lý
-    APPROVED,   // Đã duyệt
-    REJECTED    // Đã từ chối
+    PENDING,    
+    APPROVED,   
+    REJECTED    
 }

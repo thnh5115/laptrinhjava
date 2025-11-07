@@ -10,6 +10,9 @@ COPY pom.xml .
 COPY packages/java-common/pom.xml packages/java-common/
 COPY apps/admin-backend-spring/pom.xml apps/admin-backend-spring/
 
+# Make mvnw executable
+RUN chmod +x ./mvnw
+
 # Download dependencies
 RUN ./mvnw dependency:go-offline -B
 

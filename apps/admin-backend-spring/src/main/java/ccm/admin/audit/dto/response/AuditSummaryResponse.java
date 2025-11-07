@@ -7,6 +7,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+/** response - Response DTO - Response model for response data */
+
 public class AuditSummaryResponse {
     private long totalLogs;
     private long totalUsers;

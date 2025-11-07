@@ -8,9 +8,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * Transaction entity for carbon credit transactions between EV Owners and Buyers
- */
 @Entity
 @Table(name = "transactions")
 @Getter
@@ -19,6 +16,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @Hidden
+/** entity - Entity - JPA entity for entity table */
+
 public class Transaction {
     
     @Id
@@ -35,10 +34,10 @@ public class Transaction {
     private String sellerEmail;
 
     @Column(nullable = false)
-    private Double amount;  // Số lượng carbon credit
+    private Double amount;  
 
     @Column(name = "total_price", nullable = false)
-    private Double totalPrice;  // Tổng giá trị giao dịch
+    private Double totalPrice;  
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -54,12 +53,7 @@ public class Transaction {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    /**
-     * Optimistic locking version field
-     * Prevents concurrent modifications by detecting conflicting updates
-     * 
-     * PR-2 (TX-003): Protects against race conditions during status updates
-     */
+    
     @Version
     @Column(name = "version")
     private Long version;

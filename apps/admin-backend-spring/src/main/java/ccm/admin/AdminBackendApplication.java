@@ -4,9 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-// AUD-002: Enable scheduling for audit log cleanup job
 @EnableScheduling
 @SpringBootApplication
+/** admin - Component - Component for admin */
+
 public class AdminBackendApplication {
 
 	public static void main(String[] args) {
@@ -14,4 +15,3 @@ public class AdminBackendApplication {
 	}
 
 }
-
