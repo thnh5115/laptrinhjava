@@ -1,0 +1,15 @@
+# Bỏ các thư mục dữ liệu DB, build, cache, VCS
+**/mysql_data/**
+**/mysql/**
+
+**/target/**
+**/node_modules/**
+**/.git/**
+**/.idea/**
+**/.vscode/**
+
+# Bỏ file socket / lock / temp
+**/*.sock
+**/*.pid
+**/*.log
+**/.DS_Store

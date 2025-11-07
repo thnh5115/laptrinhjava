@@ -13,6 +13,7 @@
     </parent>
 
     <artifactId>java-common</artifactId>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>Java Common Library</name>
