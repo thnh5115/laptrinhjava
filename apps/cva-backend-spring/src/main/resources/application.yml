@@ -1,0 +1,50 @@
+spring:
+  profiles:
+    active: dev
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    display-request-duration: true
+  packages-to-scan: ccm.cva, ccm.common
+  paths-to-match: /api/**
+  model-and-view-allowed: false
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
+
+app:
+  security:
+    allowed-origins:
+      - ${APP_FRONTEND_ORIGIN:http://localhost:3000}
+    dev-user:
+      username: ${APP_SECURITY_DEV_USERNAME:cva_officer}
+      password: ${APP_SECURITY_DEV_PASSWORD:ChangeMe123!}
+  rate-limit:
+    approve:
+      limit: ${APP_RATE_LIMIT_APPROVE_LIMIT:10}
+      window: ${APP_RATE_LIMIT_APPROVE_WINDOW:1m}
+    reject:
+      limit: ${APP_RATE_LIMIT_REJECT_LIMIT:10}
+      window: ${APP_RATE_LIMIT_REJECT_WINDOW:1m}
+    report:
+      limit: ${APP_RATE_LIMIT_REPORT_LIMIT:6}
+      window: ${APP_RATE_LIMIT_REPORT_WINDOW:1m}
+    default-rule:
+      limit: ${APP_RATE_LIMIT_DEFAULT_LIMIT:30}
+      window: ${APP_RATE_LIMIT_DEFAULT_WINDOW:1m}

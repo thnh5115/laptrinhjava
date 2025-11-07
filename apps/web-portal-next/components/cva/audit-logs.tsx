@@ -1,94 +1,207 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { mockJourneys, mockUsers } from "@/lib/mock-data"
-import { Download, CheckCircle2, XCircle, Clock } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { listVerificationRequests, type VerificationRequest } from "@/lib/api/cva"
+import { useToast } from "@/hooks/use-toast"
+import { Download, CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react"
+
+interface LogState {
+  isLoading: boolean
+  error: string | null
+  items: VerificationRequest[]
+  exporting: boolean
+}
+
+interface AuditEvent {
+  id: string
+  status: VerificationRequest["status"]
+  ownerId: string
+  createdAt: string
+  verifiedAt?: string | null
+  summary: string
+  credits?: number | null
+}
 
 export function AuditLogs() {
-  const allJourneys = mockJourneys
+  const { toast } = useToast()
+  const [state, setState] = useState<LogState>({ isLoading: true, error: null, items: [], exporting: false })
 
-  const getActionIcon = (status: string) => {
-    switch (status) {
-      case "verified":
-        return <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-      case "rejected":
-        return <XCircle className="h-4 w-4 text-red-600" />
-      case "pending":
-        return <Clock className="h-4 w-4 text-amber-600" />
-      default:
-        return null
+  useEffect(() => {
+    let cancelled = false
+    setState((prev) => ({ ...prev, isLoading: true, error: null }))
+
+    listVerificationRequests({ size: 500 })
+      .then((page) => {
+        if (!cancelled) {
+          setState({ isLoading: false, error: null, items: page.content, exporting: false })
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setState({ isLoading: false, error: err.message ?? "Failed to load audit logs", items: [], exporting: false })
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const events = useMemo(() => buildEvents(state.items), [state.items])
+
+  const handleExport = () => {
+    setState((prev) => ({ ...prev, exporting: true }))
+    try {
+      const payload = JSON.stringify(
+        events.map((event) => ({
+          ...event,
+          createdAt: event.createdAt,
+          verifiedAt: event.verifiedAt ?? undefined,
+        })),
+        null,
+        2
+      )
+      const blob = new Blob([payload], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `cva-audit-log-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast({ title: "Export complete", description: "Audit log JSON downloaded." })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to export logs"
+      toast({ variant: "destructive", title: "Export failed", description: message })
+    } finally {
+      setState((prev) => ({ ...prev, exporting: false }))
     }
   }
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle>System Activity Logs</CardTitle>
-            <CardDescription>Complete audit trail of all verification activities</CardDescription>
+            <CardDescription>End-to-end trace of verification events</CardDescription>
+            {state.error && (
+              <Alert variant="destructive" className="mt-3">
+                <AlertDescription>{state.error}</AlertDescription>
+              </Alert>
+            )}
           </div>
-          <Button variant="outline" size="sm">
-            <Download className="mr-2 h-4 w-4" />
-            Export Logs
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={state.exporting || events.length === 0}>
+            {state.exporting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Exporting…
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-4 w-4" /> Export Logs
+              </>
+            )}
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          {allJourneys.map((journey) => {
-            const owner = mockUsers.find((u) => u.id === journey.userId)
-            const verifier = mockUsers.find((u) => u.id === journey.verifiedBy)
-
-            return (
-              <div key={journey.id} className="flex items-start gap-4 border-b pb-3 last:border-0">
-                <div className="mt-1">{getActionIcon(journey.status)}</div>
+        {state.isLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Loading audit trail…</p>
+        ) : events.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">No activity to display yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {events.map((event) => (
+              <div key={event.id} className="flex items-start gap-4 border-b pb-3 last:border-0">
+                <StatusIcon status={event.status} />
                 <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">
-                      Journey{" "}
-                      {journey.status === "verified"
-                        ? "Approved"
-                        : journey.status === "rejected"
-                          ? "Rejected"
-                          : "Submitted"}
-                    </p>
-                    <Badge
-                      variant={
-                        journey.status === "verified"
-                          ? "default"
-                          : journey.status === "rejected"
-                            ? "destructive"
-                            : "secondary"
-                      }
-                      className={
-                        journey.status === "verified"
-                          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100"
-                          : journey.status === "pending"
-                            ? "bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100"
-                            : ""
-                      }
-                    >
-                      {journey.status}
-                    </Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium">{event.summary}</p>
+                    <StatusBadge status={event.status} />
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {journey.startLocation} → {journey.endLocation} • {journey.creditsGenerated.toFixed(1)} tCO₂
+                    Owner {truncateId(event.ownerId)} • Created {formatDateTime(event.createdAt)}
+                    {event.verifiedAt && ` • Reviewed ${formatDateTime(event.verifiedAt)}`}
+                    {typeof event.credits === "number" && ` • Credits ${event.credits.toFixed(2)}`}
                   </p>
-                  <div className="flex gap-4 text-xs text-muted-foreground">
-                    <span>Owner: {owner?.name || "Unknown"}</span>
-                    {verifier && <span>Verifier: {verifier.name}</span>}
-                    <span>Date: {journey.date}</span>
-                    {journey.verifiedAt && <span>Reviewed: {new Date(journey.verifiedAt).toLocaleDateString()}</span>}
-                  </div>
                 </div>
               </div>
-            )
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
+}
+
+function buildEvents(requests: VerificationRequest[]): AuditEvent[] {
+  return requests
+    .map((request) => {
+      const status = request.status
+      const summary =
+        status === "APPROVED"
+          ? "Verification approved"
+          : status === "REJECTED"
+            ? "Verification rejected"
+            : "Verification submitted"
+
+      return {
+        id: request.id,
+        status,
+        ownerId: request.ownerId,
+        createdAt: request.createdAt,
+        verifiedAt: request.verifiedAt,
+        summary,
+        credits: request.creditIssuance?.creditsRounded ?? null,
+      }
+    })
+    .sort((a, b) => {
+      const left = new Date(a.verifiedAt ?? a.createdAt).getTime()
+      const right = new Date(b.verifiedAt ?? b.createdAt).getTime()
+      return right - left
+    })
+}
+
+function StatusIcon({ status }: { status: VerificationRequest["status"] }) {
+  switch (status) {
+    case "APPROVED":
+      return <CheckCircle2 className="mt-1 h-4 w-4 text-emerald-600" />
+    case "REJECTED":
+      return <XCircle className="mt-1 h-4 w-4 text-red-600" />
+    default:
+      return <Clock className="mt-1 h-4 w-4 text-amber-600" />
+  }
+}
+
+function StatusBadge({ status }: { status: VerificationRequest["status"] }) {
+  if (status === "APPROVED") {
+    return (
+      <Badge className="bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100" variant="default">
+        Approved
+      </Badge>
+    )
+  }
+  if (status === "REJECTED") {
+    return <Badge variant="destructive">Rejected</Badge>
+  }
+  return (
+    <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100" variant="secondary">
+      Pending
+    </Badge>
+  )
+}
+
+function truncateId(value: string, length = 6) {
+  return value.length <= length * 2 ? value : `${value.slice(0, length)}…${value.slice(-length)}`
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString()
 }
