@@ -86,6 +86,8 @@ services:
       APP_FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
       APP_SECURITY_DEV_USERNAME: ${CVA_DEV_USERNAME:-cva_officer}
       APP_SECURITY_DEV_PASSWORD: ${CVA_DEV_PASSWORD:-ChangeMe123!}
+      APP_AUDIT_BASE_URL: ${APP_AUDIT_BASE_URL:-http://ccm-admin-backend:8080}
+      APP_WALLET_BASE_URL: ${APP_WALLET_BASE_URL}
     ports:
       - "${CVA_BACKEND_PORT:-8082}:8082"
     depends_on:

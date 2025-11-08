@@ -38,6 +38,7 @@ public class CorrelationIdFilter implements Filter {
         }
 
         MDC.put("correlationId", correlationId);
+        MDC.put("requestId", correlationId);
         CorrelationIdHolder.set(correlationId);
         httpResponse.setHeader(HEADER_NAME, correlationId);
 
@@ -46,6 +47,7 @@ public class CorrelationIdFilter implements Filter {
         } finally {
             CorrelationIdHolder.clear();
             MDC.remove("correlationId");
+            MDC.remove("requestId");
         }
     }
 }

@@ -2,6 +2,7 @@ package ccm.cva.verification.presentation;
 
 import ccm.common.dto.paging.PageResponse;
 import ccm.cva.security.RateLimited;
+import ccm.cva.shared.exception.DomainValidationException;
 import ccm.cva.verification.application.command.ApproveVerificationRequestCommand;
 import ccm.cva.verification.application.command.CreateVerificationRequestCommand;
 import ccm.cva.verification.application.command.RejectVerificationRequestCommand;
@@ -9,10 +10,15 @@ import ccm.cva.verification.application.query.VerificationRequestQuery;
 import ccm.cva.verification.application.service.VerificationService;
 import ccm.cva.verification.domain.VerificationRequest;
 import ccm.cva.verification.domain.VerificationStatus;
+import ccm.cva.verification.application.service.ChecksumGenerator;
 import ccm.cva.verification.presentation.dto.ApproveVerificationRequestPayload;
 import ccm.cva.verification.presentation.dto.CreateVerificationRequestPayload;
 import ccm.cva.verification.presentation.dto.RejectVerificationRequestPayload;
 import ccm.cva.verification.presentation.dto.VerificationRequestResponse;
+import ccm.cva.verification.presentation.dto.BulkCreateVerificationRequestPayload;
+import ccm.cva.verification.presentation.dto.BulkCreateVerificationRequestResponse;
+import ccm.cva.verification.presentation.dto.ChecksumPreviewRequest;
+import ccm.cva.verification.presentation.dto.ChecksumPreviewResponse;
 import ccm.cva.verification.presentation.mapper.VerificationRequestMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,6 +31,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -43,13 +50,16 @@ public class VerificationRequestController {
 
     private final VerificationService service;
     private final VerificationRequestMapper mapper;
+    private final ChecksumGenerator checksumGenerator;
 
     public VerificationRequestController(
             VerificationService service,
-            VerificationRequestMapper mapper
+            VerificationRequestMapper mapper,
+            ChecksumGenerator checksumGenerator
     ) {
         this.service = service;
         this.mapper = mapper;
+        this.checksumGenerator = checksumGenerator;
     }
 
     @Operation(summary = "Create a verification request")
@@ -66,6 +76,79 @@ public class VerificationRequestController {
 
         VerificationRequest created = service.create(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(created));
+    }
+
+    @Operation(summary = "Bulk create verification requests")
+    @PostMapping("/bulk")
+    public ResponseEntity<BulkCreateVerificationRequestResponse> bulkCreate(
+            @Valid @RequestBody BulkCreateVerificationRequestPayload payload
+    ) {
+        List<VerificationRequestResponse> created = new java.util.ArrayList<>();
+        List<BulkCreateVerificationRequestResponse.BulkCreateError> errors = new java.util.ArrayList<>();
+
+        int index = 0;
+        for (var item : payload.items()) {
+            try {
+                String checksum = item.checksum();
+                if (!StringUtils.hasText(checksum)) {
+                    checksum = checksumGenerator.generate(
+                        item.ownerId(),
+                        item.tripId(),
+                        item.distanceKm(),
+                        item.energyKwh()
+                    );
+                }
+
+                CreateVerificationRequestCommand command = new CreateVerificationRequestCommand(
+                    item.ownerId(),
+                    item.tripId(),
+                    item.distanceKm(),
+                    item.energyKwh(),
+                    checksum,
+                    item.notes()
+                );
+
+                VerificationRequest createdRequest = service.create(command);
+                created.add(mapper.toResponse(createdRequest));
+            } catch (DomainValidationException validationException) {
+                errors.add(new BulkCreateVerificationRequestResponse.BulkCreateError(
+                    index,
+                    item.tripId(),
+                    validationException.getMessages()
+                ));
+            } catch (Exception ex) {
+                errors.add(new BulkCreateVerificationRequestResponse.BulkCreateError(
+                    index,
+                    item.tripId(),
+                    List.of(ex.getMessage() != null ? ex.getMessage() : "Unknown error")
+                ));
+            }
+            index++;
+        }
+
+        HttpStatus status;
+        if (errors.isEmpty()) {
+            status = HttpStatus.CREATED;
+        } else if (created.isEmpty()) {
+            status = HttpStatus.BAD_REQUEST;
+        } else {
+            status = HttpStatus.MULTI_STATUS;
+        }
+
+        return ResponseEntity.status(status)
+            .body(new BulkCreateVerificationRequestResponse(created, errors));
+    }
+
+    @Operation(summary = "Preview checksum for a verification request payload")
+    @PostMapping("/checksum")
+    public ChecksumPreviewResponse previewChecksum(@Valid @RequestBody ChecksumPreviewRequest payload) {
+        String checksum = checksumGenerator.generate(
+            payload.ownerId(),
+            payload.tripId(),
+            payload.distanceKm(),
+            payload.energyKwh()
+        );
+        return new ChecksumPreviewResponse(checksum);
     }
 
     @Operation(summary = "List verification requests")
@@ -112,11 +195,11 @@ public class VerificationRequestController {
             @Valid @RequestBody ApproveVerificationRequestPayload payload
     ) {
         String resolvedIdempotencyKey = (idempotencyKey != null && !idempotencyKey.isBlank())
-            ? idempotencyKey
-            : payload.idempotencyKey();
+            ? idempotencyKey.trim()
+            : (StringUtils.hasText(payload.idempotencyKey()) ? payload.idempotencyKey().trim() : null);
         String resolvedCorrelationId = (correlationId != null && !correlationId.isBlank())
-            ? correlationId
-            : payload.correlationId();
+            ? correlationId.trim()
+            : (StringUtils.hasText(payload.correlationId()) ? payload.correlationId().trim() : null);
 
         ApproveVerificationRequestCommand command = new ApproveVerificationRequestCommand(
             payload.verifierId(),

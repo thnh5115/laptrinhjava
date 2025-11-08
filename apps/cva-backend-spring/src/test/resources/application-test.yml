@@ -25,6 +25,7 @@ logging:
 
 app:
   security:
+    mode: BASIC
     allowed-origins:
       - http://localhost:3000
     dev-user:

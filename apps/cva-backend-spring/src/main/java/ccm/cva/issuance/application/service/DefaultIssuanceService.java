@@ -1,8 +1,13 @@
 package ccm.cva.issuance.application.service;
 
+import ccm.cva.issuance.application.query.CreditIssuanceQuery;
+import ccm.cva.issuance.application.query.CreditIssuanceSpecifications;
 import ccm.cva.issuance.domain.CreditIssuance;
 import ccm.cva.issuance.infrastructure.repository.CreditIssuanceRepository;
 import ccm.cva.shared.exception.DomainValidationException;
+import ccm.cva.shared.outbox.OutboxService;
+import ccm.cva.shared.outbox.WalletCreditOutboxPayload;
+import ccm.cva.shared.trace.CorrelationIdHolder;
 import ccm.cva.verification.domain.VerificationRequest;
 import ccm.cva.wallet.client.WalletClient;
 import java.math.BigDecimal;
@@ -11,14 +16,21 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class DefaultIssuanceService implements IssuanceService {
 
     private final CreditIssuanceRepository repository;
     private final WalletClient walletClient;
+    private final RetryTemplate externalRetryTemplate;
+    private final OutboxService outboxService;
 
     private static final Logger log = LoggerFactory.getLogger(DefaultIssuanceService.class);
 
@@ -28,9 +40,16 @@ public class DefaultIssuanceService implements IssuanceService {
     private static final int RAW_SCALE = 6;
     private static final int ROUNDED_SCALE = 2;
 
-    public DefaultIssuanceService(CreditIssuanceRepository repository, WalletClient walletClient) {
+    public DefaultIssuanceService(
+            CreditIssuanceRepository repository,
+            WalletClient walletClient,
+            RetryTemplate externalRetryTemplate,
+            OutboxService outboxService
+    ) {
         this.repository = repository;
         this.walletClient = walletClient;
+        this.externalRetryTemplate = externalRetryTemplate;
+        this.outboxService = outboxService;
     }
 
     @Override
@@ -39,14 +58,20 @@ public class DefaultIssuanceService implements IssuanceService {
         if (request == null || request.getId() == null) {
             throw new IllegalArgumentException("Verification request must be persisted before issuance");
         }
-        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+        String sanitizedIdempotencyKey = idempotencyKey != null ? idempotencyKey.trim() : null;
+        if (!StringUtils.hasText(sanitizedIdempotencyKey)) {
             throw new DomainValidationException(
                 "Missing idempotency key",
                 java.util.List.of("X-Idempotency-Key header or payload field is required")
             );
         }
 
-        Optional<CreditIssuance> existing = repository.findByIdempotencyKey(idempotencyKey);
+        String sanitizedCorrelationId = correlationId != null ? correlationId.trim() : null;
+        if (!StringUtils.hasText(sanitizedCorrelationId)) {
+            sanitizedCorrelationId = null;
+        }
+
+        Optional<CreditIssuance> existing = repository.findByIdempotencyKey(sanitizedIdempotencyKey);
         if (existing.isPresent()) {
             CreditIssuance issuance = existing.get();
             if (!issuance.getVerificationRequest().getId().equals(request.getId())) {
@@ -55,7 +80,7 @@ public class DefaultIssuanceService implements IssuanceService {
                     java.util.List.of("Provided idempotency key belongs to another verification request")
                 );
             }
-            log.debug("Replaying issuance for request {} via idempotency key {}", request.getId(), idempotencyKey);
+            log.info("Returning existing issuance for request {} via idempotency key {}", request.getId(), idempotencyKey);
             return issuance;
         }
 
@@ -78,13 +103,33 @@ public class DefaultIssuanceService implements IssuanceService {
         issuance.setCo2ReducedKg(co2Reduced);
         issuance.setCreditsRaw(creditsRaw);
         issuance.setCreditsRounded(creditsRounded);
-        issuance.setIdempotencyKey(idempotencyKey);
-        issuance.setCorrelationId(correlationId);
+        issuance.setIdempotencyKey(sanitizedIdempotencyKey);
+        issuance.setCorrelationId(sanitizedCorrelationId);
 
         CreditIssuance saved = repository.save(issuance);
-        // Credit wallet; any failure should bubble up to roll back the transaction.
-        walletClient.credit(request.getOwnerId(), creditsRounded, correlationId, idempotencyKey);
-        log.info("Issued {} credits (rounded) for request {}", creditsRounded, request.getId());
+
+        MDC.put("vrId", request.getId().toString());
+        final String resolvedCorrelationId = sanitizedCorrelationId;
+        try {
+            externalRetryTemplate.execute(context -> {
+                walletClient.credit(request.getOwnerId(), creditsRounded, resolvedCorrelationId, sanitizedIdempotencyKey);
+                return null;
+            });
+            log.info("Issued {} credits (rounded) for request {}", creditsRounded, request.getId());
+        } catch (Exception ex) {
+            String correlationValue = resolvedCorrelationId != null
+                ? resolvedCorrelationId
+                : CorrelationIdHolder.get().orElse(null);
+            outboxService.enqueueWalletCredit(
+                new WalletCreditOutboxPayload(request.getOwnerId(), creditsRounded, correlationValue, sanitizedIdempotencyKey),
+                correlationValue,
+                sanitizedIdempotencyKey
+            );
+            log.warn("Wallet credit deferred to outbox for request {}: {}", request.getId(), ex.getMessage());
+        } finally {
+            MDC.remove("vrId");
+        }
+
         return saved;
     }
 
@@ -98,5 +143,11 @@ public class DefaultIssuanceService implements IssuanceService {
     @Transactional(readOnly = true)
     public Optional<CreditIssuance> getByIdempotencyKey(String idempotencyKey) {
         return repository.findByIdempotencyKey(idempotencyKey);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CreditIssuance> search(CreditIssuanceQuery query, Pageable pageable) {
+        return repository.findAll(CreditIssuanceSpecifications.fromQuery(query), pageable);
     }
 }

@@ -19,12 +19,24 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { listVerificationRequests, type VerificationRequest } from "@/lib/api/cva"
+import {
+  getAnalyticsOverview,
+  listVerificationRequests,
+  type AnalyticsOverviewResponse,
+  type VerificationRequest,
+} from "@/lib/api/cva"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface DashboardState {
   isLoading: boolean
   error: string | null
   items: VerificationRequest[]
+}
+
+interface OverviewState {
+  isLoading: boolean
+  error: string | null
+  overview: AnalyticsOverviewResponse | null
 }
 
 export function CvaDashboardOverview() {
@@ -33,12 +45,17 @@ export function CvaDashboardOverview() {
     error: null,
     items: [],
   })
+  const [overviewState, setOverviewState] = useState<OverviewState>({
+    isLoading: true,
+    error: null,
+    overview: null,
+  })
 
   useEffect(() => {
     let cancelled = false
-    setState((prev) => ({ ...prev, isLoading: true, error: null }))
+    setState((prev: DashboardState) => ({ ...prev, isLoading: true, error: null }))
 
-    listVerificationRequests({ size: 200 })
+    listVerificationRequests({ status: "PENDING", size: 100 })
       .then((page) => {
         if (!cancelled) {
           setState({ isLoading: false, error: null, items: page.content })
@@ -55,48 +72,73 @@ export function CvaDashboardOverview() {
     }
   }, [])
 
-  const { pending, approved, rejected, approvalRate, monthly } = useMemo(() => deriveStats(items), [items])
+  useEffect(() => {
+    let cancelled = false
+    setOverviewState((prev: OverviewState) => ({ ...prev, isLoading: true, error: null }))
+
+    getAnalyticsOverview(30)
+      .then((overview) => {
+        if (!cancelled) {
+          setOverviewState({ isLoading: false, error: null, overview })
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setOverviewState({ isLoading: false, error: err.message ?? "Failed to load analytics overview", overview: null })
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const overview = overviewState.overview
+  const pending = useMemo(() => [...items].sort(sortByCreatedDesc), [items])
+  const chartData = useMemo(() => buildTrendData(overview?.recentTrend ?? []), [overview])
+  const isBusy = isLoading || overviewState.isLoading
+  const errors = [error, overviewState.error].filter(Boolean) as string[]
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight">CVA Dashboard</h1>
-          {isLoading && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
+          {isBusy && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
         <p className="text-muted-foreground">
           Carbon Verification Authority – monitor submissions and keep the ledger healthy
         </p>
-        {error && (
-          <p className="flex items-center gap-2 text-sm text-destructive">
-            <AlertTriangle className="h-4 w-4" /> {error}
+        {errors.map((message, index) => (
+          <p key={index} className="flex items-center gap-2 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4" /> {message}
           </p>
-        )}
+        ))}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Pending Reviews"
           icon={<Clock className="h-4 w-4 text-amber-600" />}
-          value={pending.length}
+          value={overview ? pending.length || overview.pendingRequests : undefined}
           subtitle="Awaiting verification"
         />
         <MetricCard
           title="Approved"
           icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-          value={approved.length}
+          value={overview?.approvedRequests}
           subtitle="Issued credits"
         />
         <MetricCard
           title="Rejected"
           icon={<XCircle className="h-4 w-4 text-red-600" />}
-          value={rejected.length}
+          value={overview?.rejectedRequests}
           subtitle="Returned to owners"
         />
         <MetricCard
           title="Approval Rate"
           icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
-          value={`${approvalRate.toFixed(1)}%`}
+          value={overview ? `${overview.approvalRate.toFixed(1)}%` : undefined}
           subtitle="For completed decisions"
         />
       </div>
@@ -115,9 +157,9 @@ export function CvaDashboardOverview() {
             className="h-[300px]"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthly}>
+              <BarChart data={chartData.length ? chartData : fallbackChartData()}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="month" className="text-xs" />
+                <XAxis dataKey="label" className="text-xs" />
                 <YAxis allowDecimals={false} className="text-xs" />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="approved" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} />
@@ -136,7 +178,9 @@ export function CvaDashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {pending.length === 0 && !isLoading ? (
+              {isLoading ? (
+                <PendingSkeleton />
+              ) : pending.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">All caught up for now.</p>
               ) : (
                 pending.slice(0, 3).map((request) => (
@@ -192,44 +236,6 @@ export function CvaDashboardOverview() {
   )
 }
 
-function deriveStats(requests: VerificationRequest[]) {
-  const pending = requests.filter((req) => req.status === "PENDING").sort(sortByCreatedDesc)
-  const approved = requests.filter((req) => req.status === "APPROVED")
-  const rejected = requests.filter((req) => req.status === "REJECTED")
-
-  const totalReviewed = approved.length + rejected.length
-  const approvalRate = totalReviewed > 0 ? (approved.length / totalReviewed) * 100 : 0
-
-  const monthlyMap = new Map<string, { approved: number; rejected: number; order: number; month: string }>()
-  for (const request of requests) {
-    const created = new Date(request.createdAt)
-    if (Number.isNaN(created.getTime())) continue
-    const monthLabel = created.toLocaleString("default", { month: "short", year: "numeric" })
-    const key = `${created.getFullYear()}-${created.getMonth()}`
-    const existing = monthlyMap.get(key)
-    if (existing) {
-      if (request.status === "APPROVED") {
-        existing.approved += 1
-      } else if (request.status === "REJECTED") {
-        existing.rejected += 1
-      }
-    } else {
-      monthlyMap.set(key, {
-        month: monthLabel,
-        approved: request.status === "APPROVED" ? 1 : 0,
-        rejected: request.status === "REJECTED" ? 1 : 0,
-        order: created.getFullYear() * 12 + created.getMonth(),
-      })
-    }
-  }
-
-  const monthly = Array.from(monthlyMap.entries())
-    .sort((a, b) => a[1].order - b[1].order)
-    .map(([_, value]) => ({ month: value.month, approved: value.approved, rejected: value.rejected }))
-
-  return { pending, approved, rejected, approvalRate, monthly }
-}
-
 function sortByCreatedDesc(a: VerificationRequest, b: VerificationRequest) {
   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 }
@@ -240,10 +246,51 @@ function formatDate(value: string) {
   return date.toLocaleString()
 }
 
+function buildTrendData(data: AnalyticsOverviewResponse["recentTrend"]): Array<{ label: string; approved: number; rejected: number }> {
+  return data.map((entry) => ({
+    label: formatTrendLabel(entry.date),
+    approved: entry.approvals,
+    rejected: entry.rejections,
+  }))
+}
+
+function formatTrendLabel(dateLike: string) {
+  const date = new Date(dateLike)
+  if (Number.isNaN(date.getTime())) {
+    return dateLike
+  }
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+}
+
+function fallbackChartData() {
+  return [
+    { label: "Week 1", approved: 0, rejected: 0 },
+    { label: "Week 2", approved: 0, rejected: 0 },
+    { label: "Week 3", approved: 0, rejected: 0 },
+    { label: "Week 4", approved: 0, rejected: 0 },
+  ]
+}
+
+function PendingSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[0, 1, 2].map((key) => (
+        <div key={key} className="flex items-center justify-between border-b pb-3 last:border-0">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-48" />
+          </div>
+          <Skeleton className="h-6 w-20" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 interface MetricCardProps {
   title: string
   icon: React.ReactNode
-  value: number | string
+  value?: number | string
   subtitle: string
 }
 
@@ -255,8 +302,17 @@ function MetricCard({ title, icon, value, subtitle }: MetricCardProps) {
         {icon}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <p className="text-xs text-muted-foreground">{subtitle}</p>
+        {typeof value === "undefined" ? (
+          <div className="space-y-1">
+            <Skeleton className="h-6 w-24" />
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          </div>
+        ) : (
+          <>
+            <div className="text-2xl font-bold">{value}</div>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          </>
+        )}
       </CardContent>
     </Card>
   )

@@ -1,14 +1,17 @@
 package ccm.cva.verification.infrastructure.repository;
 
 import ccm.cva.verification.domain.VerificationRequest;
+import ccm.cva.verification.domain.VerificationStatus;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -19,6 +22,12 @@ public interface VerificationRequestRepository extends JpaRepository<Verificatio
     boolean existsByChecksum(String checksum);
 
     boolean existsByOwnerIdAndTripId(UUID ownerId, String tripId);
+
+    long countByStatus(VerificationStatus status);
+
+    List<VerificationRequest> findAllByCreatedAtBetweenOrderByCreatedAtAsc(Instant from, Instant to);
+
+    List<VerificationRequest> findAllByVerifiedAtBetweenOrderByVerifiedAtAsc(Instant from, Instant to);
 
     @Override
     @EntityGraph(attributePaths = "creditIssuance")

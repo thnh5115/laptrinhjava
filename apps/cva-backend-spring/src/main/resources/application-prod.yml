@@ -23,3 +23,15 @@ logging:
 springdoc:
   cache:
     disabled: true
+
+app:
+  security:
+    mode: JWT
+    allowed-origins:
+      - ${APP_FRONTEND_ORIGIN:https://portal.example.com}
+    jwt:
+      jwk-set-uri: ${APP_SECURITY_JWK_SET_URI}
+      issuer: ${APP_SECURITY_JWT_ISSUER}
+      audience: ${APP_SECURITY_JWT_AUDIENCE:CVA}
+  outbox:
+    poll-interval: ${APP_OUTBOX_POLL_INTERVAL:30s}

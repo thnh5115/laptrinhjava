@@ -11,12 +11,11 @@ import ccm.cva.wallet.client.WalletHttpClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
@@ -25,9 +24,9 @@ public class IntegrationConfig {
 
     @Bean
     @ConditionalOnProperty(prefix = "app.wallet", name = "base-url")
-    @Primary
     public WalletClient walletHttpClient(RestTemplateBuilder builder, WalletClientProperties properties) {
         RestTemplate restTemplate = builder
+            .requestFactory(SimpleClientHttpRequestFactory::new)
             .additionalInterceptors((request, body, execution) -> {
                 CorrelationIdHolder.get().ifPresent(id -> request.getHeaders().add(CorrelationIdFilter.HEADER_NAME, id));
                 return execution.execute(request, body);
@@ -45,9 +44,9 @@ public class IntegrationConfig {
 
     @Bean
     @ConditionalOnProperty(prefix = "app.audit", name = "base-url")
-    @Primary
     public AuditLogClient httpAuditLogClient(RestTemplateBuilder builder, AuditClientProperties properties) {
         RestTemplate restTemplate = builder
+            .requestFactory(SimpleClientHttpRequestFactory::new)
             .additionalInterceptors((request, body, execution) -> {
                 CorrelationIdHolder.get().ifPresent(id -> request.getHeaders().add(CorrelationIdFilter.HEADER_NAME, id));
                 return execution.execute(request, body);
@@ -64,15 +63,14 @@ public class IntegrationConfig {
     }
 
     private ClientHttpRequestFactory requestFactory(java.time.Duration connectTimeout, java.time.Duration readTimeout) {
-        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         if (connectTimeout != null) {
-            int millis = (int) connectTimeout.toMillis();
-            factory.setConnectTimeout(millis);
-            factory.setConnectionRequestTimeout(millis);
+            factory.setConnectTimeout((int) connectTimeout.toMillis());
         }
         if (readTimeout != null) {
             factory.setReadTimeout((int) readTimeout.toMillis());
         }
         return factory;
     }
+
 }

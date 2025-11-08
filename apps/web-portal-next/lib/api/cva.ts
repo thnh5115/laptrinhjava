@@ -46,6 +46,48 @@ export interface VerificationQuery {
   size?: number
 }
 
+export interface AnalyticsDailyMetric {
+  date: string
+  submissions: number
+  approvals: number
+  rejections: number
+  creditsIssued: number
+}
+
+export interface AnalyticsOverviewResponse {
+  totalRequests: number
+  pendingRequests: number
+  approvedRequests: number
+  rejectedRequests: number
+  approvalRate: number
+  rejectionRate: number
+  totalCreditsIssued: number
+  creditsIssuedInWindow: number
+  requestsInWindow: number
+  recentTrend: AnalyticsDailyMetric[]
+}
+
+export interface AnalyticsSummaryResponse {
+  totalRequests: number
+  pendingRequests: number
+  approvedRequests: number
+  rejectedRequests: number
+  approvalRate: number
+  rejectionRate: number
+  totalCreditsIssued: number
+}
+
+export interface AnalyticsSeriesResponse {
+  from: string
+  to: string
+  data: AnalyticsDailyMetric[]
+}
+
+export interface AnalyticsSeriesQuery {
+  from?: string | Date
+  to?: string | Date
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_CVA_API_URL ?? "http://localhost:8082"
 const DEV_FALLBACK_TOKEN = "Basic Y3ZhX29mZmljZXI6cGFzc3dvcmQxMjM="
 
@@ -109,6 +151,43 @@ async function safeParseError(response: Response): Promise<string> {
     // ignore parse failure
   }
   return `${response.status} ${response.statusText}`
+}
+
+function normaliseDateInput(value: string | Date): string {
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10)
+  }
+  if (value.length === 10 && value.includes("-")) {
+    return value
+  }
+  return new Date(value).toISOString().slice(0, 10)
+}
+
+export async function getAnalyticsOverview(windowDays = 30): Promise<AnalyticsOverviewResponse> {
+  const params = new URLSearchParams()
+  if (typeof windowDays === "number" && !Number.isNaN(windowDays)) {
+    params.set("windowDays", windowDays.toString())
+  }
+
+  const path = `/api/cva/analytics/overview${params.size > 0 ? `?${params.toString()}` : ""}`
+  return fetchJson<AnalyticsOverviewResponse>(path)
+}
+
+export async function getAnalyticsSummary(): Promise<AnalyticsSummaryResponse> {
+  return fetchJson<AnalyticsSummaryResponse>("/api/cva/analytics/summary")
+}
+
+export async function getAnalyticsSeries(query: AnalyticsSeriesQuery = {}): Promise<AnalyticsSeriesResponse> {
+  const params = new URLSearchParams()
+  if (query.from) {
+    params.set("from", normaliseDateInput(query.from))
+  }
+  if (query.to) {
+    params.set("to", normaliseDateInput(query.to))
+  }
+
+  const path = `/api/cva/analytics/series${params.size > 0 ? `?${params.toString()}` : ""}`
+  return fetchJson<AnalyticsSeriesResponse>(path)
 }
 
 export async function listVerificationRequests(query: VerificationQuery = {}): Promise<PageResponse<VerificationRequest>> {

@@ -6,11 +6,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: "health,info"
+        include: "health,info,metrics,prometheus"
       base-path: /actuator
   endpoint:
     health:
       show-details: when-authorized
+    prometheus:
+      access: unrestricted
 
 springdoc:
   api-docs:
@@ -30,11 +32,27 @@ springdoc:
 
 app:
   security:
+    mode: ${APP_SECURITY_MODE:BASIC}
     allowed-origins:
       - ${APP_FRONTEND_ORIGIN:http://localhost:3000}
     dev-user:
       username: ${APP_SECURITY_DEV_USERNAME:cva_officer}
       password: ${APP_SECURITY_DEV_PASSWORD:ChangeMe123!}
+    jwt:
+      jwk-set-uri: ${APP_SECURITY_JWK_SET_URI:}
+      issuer: ${APP_SECURITY_JWT_ISSUER:}
+      audience: ${APP_SECURITY_JWT_AUDIENCE:}
+      roles-claim: ${APP_SECURITY_JWT_ROLES_CLAIM:roles}
+  audit:
+    base-url: ${APP_AUDIT_BASE_URL:}
+    record-path: ${APP_AUDIT_RECORD_PATH:/api/admin/audit/logs}
+    connect-timeout: ${APP_AUDIT_CONNECT_TIMEOUT:2s}
+    read-timeout: ${APP_AUDIT_READ_TIMEOUT:5s}
+  wallet:
+    base-url: ${APP_WALLET_BASE_URL:}
+    credit-path: ${APP_WALLET_CREDIT_PATH:/api/wallet/credits}
+    connect-timeout: ${APP_WALLET_CONNECT_TIMEOUT:2s}
+    read-timeout: ${APP_WALLET_READ_TIMEOUT:5s}
   rate-limit:
     approve:
       limit: ${APP_RATE_LIMIT_APPROVE_LIMIT:10}
@@ -48,3 +66,9 @@ app:
     default-rule:
       limit: ${APP_RATE_LIMIT_DEFAULT_LIMIT:30}
       window: ${APP_RATE_LIMIT_DEFAULT_WINDOW:1m}
+  outbox:
+    max-attempts: ${APP_OUTBOX_MAX_ATTEMPTS:5}
+    initial-backoff: ${APP_OUTBOX_INITIAL_BACKOFF:1s}
+    max-backoff: ${APP_OUTBOX_MAX_BACKOFF:30s}
+    poll-batch-size: ${APP_OUTBOX_POLL_BATCH_SIZE:25}
+    poll-interval: ${APP_OUTBOX_POLL_INTERVAL:30s}

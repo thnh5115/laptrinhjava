@@ -26,10 +26,10 @@ Carbon Credit Marketplace là một nền tảng giao dịch carbon credit đư�
 carbon-credit-marketplace/
 ├── apps/                           # Ứng dụng chạy độc lập
 │   ├── admin-backend-spring/       # ✅ Backend Admin (Spring Boot)
-│   ├── cva-backend-spring/         # 🔲 Backend CVA (Placeholder)
+│   ├── cva-backend-spring/         # ✅ Backend CVA (Spring Boot)
 │   ├── owner-backend-spring/       # 🔲 Backend EV Owner (Placeholder)
 │   ├── buyer-backend-spring/       # 🔲 Backend Buyer (Placeholder)
-│   └── web-portal-next/            # 🔲 Frontend Portal (Next.js)
+│   └── web-portal-next/            # Frontend portal (Next.js, CVA module ready)
 ├── packages/                       # Thư viện dùng chung
 │   ├── java-common/                # ✅ Java shared library
 │   ├── ts-sdk/                     # 🔲 TypeScript SDK
@@ -90,17 +90,19 @@ docker-compose up -d
 curl http://localhost:8080/actuator/health
 ```
 
-### Frontend (Coming Soon)
+### Frontend (Next.js Portal)
 
 ```bash
-# Install dependencies
+# Install dependencies (first run)
 pnpm install
 
-# Run dev server
+# Launch CVA console
+cd apps/web-portal-next
+cp .env.example .env.local  # update NEXT_PUBLIC_CVA_* values if needed
 pnpm dev
 
 # Access web portal
-open http://localhost:3000
+open http://localhost:3000/cva/dashboard
 ```
 
 ---
@@ -135,6 +137,55 @@ open http://localhost:3000
 
 **API Docs:** http://localhost:8080/swagger-ui.html
 
+### CVA Backend (`apps/cva-backend-spring/`)
+
+**Status:** ✅ Hoàn thiện (Day 7)
+
+**Highlights:**
+
+- 💼 Verification workflow: create, bulk import, approve, reject with audit logging and rate limiting.
+- 📑 Reporting: JSON and PDF exports using OpenPDF.
+- 📊 Analytics: rolling overview powering CVA dashboard (`GET /api/cva/analytics/overview`).
+- ♻️ Credit issuance: idempotent issuance records with optional wallet integration.
+
+**Quick Start:**
+
+```bash
+./mvnw -pl apps/cva-backend-spring spring-boot:run
+# Service at http://localhost:8082
+```
+
+**Docs & Assets:**
+
+- `apps/cva-backend-spring/README.md`
+- `docs/cva/carbon-audit-verification-guide.md`
+- `docs/api/cva-e2e.postman_collection.json`
+
+### Web Portal (`apps/web-portal-next/`)
+
+**Status:** 🔄 Đang hoàn thiện (CVA console khả dụng)
+
+**Highlights:**
+
+- CVA navigation (`/cva/dashboard`, `/cva/reviews`, `/cva/history`, `/cva/analytics`, `/cva/logs`).
+- Integrated API client (`lib/api/cva.ts`) with approve/reject/report helpers.
+- UI feedback: loading states, toast notifications, audit log export.
+
+**Quick Start:**
+
+```bash
+cd apps/web-portal-next
+pnpm install
+cp .env.example .env.local
+pnpm dev
+# Visit http://localhost:3000/cva/reviews
+```
+
+**Required Env:**
+
+- `NEXT_PUBLIC_CVA_API_URL` – CVA backend base URL (default `http://localhost:8082`).
+- `NEXT_PUBLIC_CVA_BASIC_TOKEN` – Base64 for `cva_officer:password123` during dev.
+
 ### Java Common (`packages/java-common/`)
 
 **Status:** ✅ Hoàn thiện
@@ -156,10 +207,9 @@ open http://localhost:3000
 
 ### Other Modules
 
-**CVA Backend:** 🔲 Placeholder  
 **Owner Backend:** 🔲 Placeholder  
 **Buyer Backend:** 🔲 Placeholder  
-**Web Portal:** 🔲 Placeholder  
+**Web Portal:** In progress (CVA pages)  
 **TypeScript SDK:** 🔲 Placeholder  
 **UI Library:** 🔲 Placeholder
 
@@ -233,6 +283,8 @@ mvn flyway:migrate
 
 - **Admin Backend:** `apps/admin-backend-spring/README.md`
 - **Java Common:** `packages/java-common/README.md`
+- **CVA Backend:** `apps/cva-backend-spring/README.md`
+- **CVA Guide:** `docs/cva/carbon-audit-verification-guide.md`
 
 ### Architecture
 
@@ -334,10 +386,10 @@ pnpm test:e2e
 | ------------------ | -------------- | -------- | ------------ |
 | **Admin Backend**  | ✅ Complete    | 100%     | 2025-10-31   |
 | **Java Common**    | ✅ Complete    | 100%     | 2025-10-31   |
-| **CVA Backend**    | 🔲 Placeholder | 0%       | -            |
+| **CVA Backend**    | ✅ Complete    | 100%     | 2025-11-08   |
 | **Owner Backend**  | 🔲 Placeholder | 0%       | -            |
 | **Buyer Backend**  | 🔲 Placeholder | 0%       | -            |
-| **Web Portal**     | 🔲 Placeholder | 0%       | -            |
+| **Web Portal**     | In progress | 40%      | 2025-11-08   |
 | **TypeScript SDK** | 🔲 Planned     | 0%       | -            |
 | **UI Library**     | 🔲 Planned     | 0%       | -            |
 | **CI/CD**          | 🔲 Planned     | 0%       | -            |
@@ -384,7 +436,7 @@ pnpm test:e2e
 | Role         | Backend Module         | Status         |
 | ------------ | ---------------------- | -------------- |
 | **Admin**    | `admin-backend-spring` | ✅ Complete    |
-| **CVA**      | `cva-backend-spring`   | 🔲 Placeholder |
+| **CVA**      | `cva-backend-spring`   | ✅ Complete |
 | **EV Owner** | `owner-backend-spring` | 🔲 Placeholder |
 | **Buyer**    | `buyer-backend-spring` | 🔲 Placeholder |
 
@@ -455,7 +507,7 @@ docs(architecture): add ADR for API versioning
 
 ### Q1 2026
 
-- 🔲 CVA backend development
+- ✅ CVA backend development
 - 🔲 EV Owner backend development
 - 🔲 Buyer backend development
 - 🔲 API integration & testing

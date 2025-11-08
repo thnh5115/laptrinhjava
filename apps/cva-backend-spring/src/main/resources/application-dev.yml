@@ -13,6 +13,9 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    locations:
+      - classpath:db/migration
+      - classpath:db/dev-migration
   jackson:
     default-property-inclusion: NON_NULL
 
@@ -24,9 +27,16 @@ server:
 
 app:
   security:
+    mode: BASIC
     allowed-origins:
       - http://localhost:3000
       - http://localhost:3001
     dev-user:
       username: cva_officer
       password: password123
+  audit:
+    base-url: ${APP_AUDIT_BASE_URL:http://localhost:8080}
+  wallet:
+    base-url: ${APP_WALLET_BASE_URL:}
+  outbox:
+    poll-interval: 15s

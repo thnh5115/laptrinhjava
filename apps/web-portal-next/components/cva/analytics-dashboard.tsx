@@ -17,34 +17,42 @@ import {
   Legend,
 } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { listVerificationRequests, type VerificationRequest } from "@/lib/api/cva"
+import {
+  getAnalyticsOverview,
+  listVerificationRequests,
+  type AnalyticsOverviewResponse,
+  type VerificationRequest,
+} from "@/lib/api/cva"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface AnalyticsState {
   isLoading: boolean
   error: string | null
+  overview: AnalyticsOverviewResponse | null
   items: VerificationRequest[]
 }
 
 export function AnalyticsDashboard() {
-  const [{ isLoading, error, items }, setState] = useState<AnalyticsState>({
+  const [{ isLoading, error, overview, items }, setState] = useState<AnalyticsState>({
     isLoading: true,
     error: null,
+    overview: null,
     items: [],
   })
 
   useEffect(() => {
     let cancelled = false
-    setState((prev) => ({ ...prev, isLoading: true, error: null }))
+    setState((prev: AnalyticsState) => ({ ...prev, isLoading: true, error: null }))
 
-    listVerificationRequests({ size: 500 })
-      .then((page) => {
+    Promise.all([getAnalyticsOverview(30), listVerificationRequests({ size: 500 })])
+      .then(([overviewResponse, page]) => {
         if (!cancelled) {
-          setState({ isLoading: false, error: null, items: page.content })
+          setState({ isLoading: false, error: null, overview: overviewResponse, items: page.content })
         }
       })
       .catch((err) => {
         if (!cancelled) {
-          setState({ isLoading: false, error: err.message ?? "Unable to load analytics", items: [] })
+          setState({ isLoading: false, error: err.message ?? "Unable to load analytics", overview: null, items: [] })
         }
       })
 
@@ -53,7 +61,7 @@ export function AnalyticsDashboard() {
     }
   }, [])
 
-  const analytics = useMemo(() => deriveAnalytics(items), [items])
+  const analytics = useMemo(() => deriveAnalytics(overview, items), [overview, items])
 
   return (
     <div className="space-y-6">
@@ -74,25 +82,25 @@ export function AnalyticsDashboard() {
         <MetricCard
           title="Total Reviews"
           icon={<BarChart3 className="h-4 w-4 text-emerald-600" />}
-          value={analytics.totalReviewed}
+          value={isLoading ? undefined : analytics.totalReviewed}
           subtitle="Completed verifications"
         />
         <MetricCard
           title="Approval Rate"
           icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
-          value={`${analytics.approvalRate.toFixed(1)}%`}
+          value={isLoading ? undefined : `${analytics.approvalRate.toFixed(1)}%`}
           subtitle="Completed decisions"
         />
         <MetricCard
           title="Avg Review Time"
           icon={<Clock className="h-4 w-4 text-emerald-600" />}
-          value={`${analytics.avgReviewTime.toFixed(1)}h`}
+          value={isLoading ? undefined : `${analytics.avgReviewTime.toFixed(1)}h`}
           subtitle="Submission to decision"
         />
         <MetricCard
           title="Credits Issued"
           icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-          value={analytics.totalCredits.toFixed(2)}
+          value={isLoading ? undefined : analytics.totalCredits.toFixed(2)}
           subtitle="tCO₂ approved"
         />
       </div>
@@ -158,7 +166,7 @@ export function AnalyticsDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={analytics.statusBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                    {analytics.statusBreakdown.map((entry, index) => (
+                    {analytics.statusBreakdown.map((entry: AnalyticsSummary["statusBreakdown"][number], index: number) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -200,59 +208,30 @@ interface AnalyticsSummary {
   statusBreakdown: { name: string; value: number; color: string }[]
 }
 
-function deriveAnalytics(requests: VerificationRequest[]): AnalyticsSummary {
-  const approved = requests.filter((req) => req.status === "APPROVED")
-  const rejected = requests.filter((req) => req.status === "REJECTED")
-  const pending = requests.filter((req) => req.status === "PENDING")
+function deriveAnalytics(
+  overview: AnalyticsOverviewResponse | null,
+  requests: VerificationRequest[]
+): AnalyticsSummary {
+  const approvedRequests = requests.filter((req) => req.status === "APPROVED")
+  const rejectedRequests = requests.filter((req) => req.status === "REJECTED")
+  const pendingRequests = requests.filter((req) => req.status === "PENDING")
 
-  const totalReviewed = approved.length + rejected.length
-  const approvalRate = totalReviewed > 0 ? (approved.length / totalReviewed) * 100 : 0
-
-  const reviewDurations: number[] = []
-  for (const request of [...approved, ...rejected]) {
-    if (!request.verifiedAt) continue
-    const created = new Date(request.createdAt)
-    const verified = new Date(request.verifiedAt)
-    if (Number.isNaN(created.getTime()) || Number.isNaN(verified.getTime())) continue
-    const diffHours = (verified.getTime() - created.getTime()) / (1000 * 60 * 60)
-    if (diffHours >= 0) {
-      reviewDurations.push(diffHours)
-    }
-  }
-  const avgReviewTime = reviewDurations.length
-    ? reviewDurations.reduce((sum, value) => sum + value, 0) / reviewDurations.length
-    : 0
-
-  const totalCredits = approved.reduce((sum, request) => sum + (request.creditIssuance?.creditsRounded ?? 0), 0)
-
-  const weeklyMap = new Map<string, { week: string; reviews: number; order: number }>()
-  for (const request of requests) {
-    const created = new Date(request.createdAt)
-    if (Number.isNaN(created.getTime())) continue
-    const { key, label, order } = getWeekBucket(created)
-    const existing = weeklyMap.get(key)
-    if (existing) {
-      existing.reviews += 1
-    } else {
-      weeklyMap.set(key, { week: label, reviews: 1, order })
-    }
-  }
-
-  const weeklyActivity = Array.from(weeklyMap.values())
-    .sort((a, b) => a.order - b.order)
-    .slice(-6)
-    .map(({ week, reviews }) => ({ week, reviews }))
-
-  const statusBreakdown = [
-    { name: "Approved", value: approved.length, color: "#10b981" },
-    { name: "Rejected", value: rejected.length, color: "#ef4444" },
-    { name: "Pending", value: pending.length, color: "#f59e0b" },
-  ]
+  const approvedCount = overview?.approvedRequests ?? approvedRequests.length
+  const rejectedCount = overview?.rejectedRequests ?? rejectedRequests.length
+  const pendingCount = overview?.pendingRequests ?? pendingRequests.length
+  const totalReviewed = overview ? overview.approvedRequests + overview.rejectedRequests : approvedCount + rejectedCount
+  const approvalRate = overview?.approvalRate ?? (totalReviewed > 0 ? (approvedCount / totalReviewed) * 100 : 0)
+  const totalCredits = overview ? Number(overview.totalCreditsIssued ?? 0) : totalCreditsFromRequests(approvedRequests)
+  const avgReviewTime = computeAverageReviewTime([...approvedRequests, ...rejectedRequests])
+  const weeklyActivity = overview?.recentTrend?.length
+    ? groupTrendByWeek(overview.recentTrend)
+    : groupRequestsByWeek(requests)
+  const statusBreakdown = buildStatusBreakdown(approvedCount, rejectedCount, pendingCount)
 
   return {
-    approvedCount: approved.length,
-    rejectedCount: rejected.length,
-    pendingCount: pending.length,
+    approvedCount,
+    rejectedCount,
+    pendingCount,
     totalReviewed,
     approvalRate,
     avgReviewTime,
@@ -281,6 +260,72 @@ function fallbackWeekly() {
   ]
 }
 
+function groupTrendByWeek(trend: AnalyticsOverviewResponse["recentTrend"]): { week: string; reviews: number }[] {
+  const weeklyMap = new Map<string, { label: string; reviews: number; order: number }>()
+  for (const entry of trend) {
+    const date = new Date(entry.date)
+    if (Number.isNaN(date.getTime())) continue
+    const { key, label, order } = getWeekBucket(date)
+    const reviews = entry.approvals + entry.rejections
+    const existing = weeklyMap.get(key)
+    if (existing) {
+      existing.reviews += reviews
+    } else {
+      weeklyMap.set(key, { label, reviews, order })
+    }
+  }
+  return Array.from(weeklyMap.values())
+    .sort((a, b) => a.order - b.order)
+    .slice(-6)
+    .map(({ label, reviews }) => ({ week: label, reviews }))
+}
+
+function groupRequestsByWeek(requests: VerificationRequest[]): { week: string; reviews: number }[] {
+  const weeklyMap = new Map<string, { label: string; reviews: number; order: number }>()
+  for (const request of requests) {
+    const created = new Date(request.createdAt)
+    if (Number.isNaN(created.getTime())) continue
+    const { key, label, order } = getWeekBucket(created)
+    const existing = weeklyMap.get(key)
+    if (existing) {
+      existing.reviews += 1
+    } else {
+      weeklyMap.set(key, { label, reviews: 1, order })
+    }
+  }
+  return Array.from(weeklyMap.values())
+    .sort((a, b) => a.order - b.order)
+    .slice(-6)
+    .map(({ label, reviews }) => ({ week: label, reviews }))
+}
+
+function totalCreditsFromRequests(requests: VerificationRequest[]) {
+  return requests.reduce((sum, request) => sum + (request.creditIssuance?.creditsRounded ?? 0), 0)
+}
+
+function computeAverageReviewTime(requests: VerificationRequest[]) {
+  const durations: number[] = []
+  for (const request of requests) {
+    if (!request.verifiedAt) continue
+    const created = new Date(request.createdAt)
+    const verified = new Date(request.verifiedAt)
+    if (Number.isNaN(created.getTime()) || Number.isNaN(verified.getTime())) continue
+    const diffHours = (verified.getTime() - created.getTime()) / (1000 * 60 * 60)
+    if (diffHours >= 0) {
+      durations.push(diffHours)
+    }
+  }
+  return durations.length ? durations.reduce((sum, value) => sum + value, 0) / durations.length : 0
+}
+
+function buildStatusBreakdown(approved: number, rejected: number, pending: number) {
+  return [
+    { name: "Approved", value: approved, color: "#10b981" },
+    { name: "Rejected", value: rejected, color: "#ef4444" },
+    { name: "Pending", value: pending, color: "#f59e0b" },
+  ]
+}
+
 function MetricCard({
   title,
   icon,
@@ -289,7 +334,7 @@ function MetricCard({
 }: {
   title: string
   icon: React.ReactNode
-  value: string | number
+  value?: string | number
   subtitle: string
 }) {
   return (
@@ -299,8 +344,17 @@ function MetricCard({
         {icon}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <p className="text-xs text-muted-foreground">{subtitle}</p>
+        {typeof value === "undefined" ? (
+          <div className="space-y-1">
+            <Skeleton className="h-6 w-24" />
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          </div>
+        ) : (
+          <>
+            <div className="text-2xl font-bold">{value}</div>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          </>
+        )}
       </CardContent>
     </Card>
   )

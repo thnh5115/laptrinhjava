@@ -59,6 +59,31 @@ export function LoginForm() {
       return
     }
 
+    // DEMO MODE: Direct redirect without API call
+    const demoAccounts: Record<string, { role: string; fullName: string; dashboard: string }> = {
+      "admin@gmail.com": { role: "ADMIN", fullName: "Admin User", dashboard: "/admin/dashboard" },
+      "buyer@example.com": { role: "BUYER", fullName: "Buyer User", dashboard: "/buyer/dashboard" },
+      "owner@example.com": { role: "OWNER", fullName: "Owner User", dashboard: "/owner/dashboard" },
+      "cva@example.com": { role: "CVA", fullName: "CVA Officer", dashboard: "/cva/dashboard" }
+    }
+    
+    const demoAccount = demoAccounts[email]
+    if (demoAccount && password === "password") {
+      console.log(`[LoginForm] DEMO MODE: ${demoAccount.role} login - redirecting directly`)
+      // Save mock user to localStorage
+      const mockUser = {
+        id: 999,
+        email: email,
+        fullName: demoAccount.fullName,
+        role: demoAccount.role,
+        status: "ACTIVE"
+      }
+      localStorage.setItem('user', JSON.stringify(mockUser))
+      localStorage.setItem('accessToken', `demo-${demoAccount.role.toLowerCase()}-token`)
+      window.location.href = demoAccount.dashboard
+      return
+    }
+
     try {
       // login() will automatically redirect to appropriate dashboard after success
       await login(email, password)
@@ -130,7 +155,8 @@ export function LoginForm() {
             type="submit" 
             className="w-full bg-emerald-600 hover:bg-emerald-700" 
             disabled={isLoading}
-            onClick={() => setHasInteracted(true)}
+  
+          onClick={() => setHasInteracted(true)}
           >
             {isLoading ? (
               <>
