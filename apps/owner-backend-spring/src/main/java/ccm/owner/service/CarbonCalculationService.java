@@ -3,7 +3,6 @@ package ccm.owner.service;
 import ccm.owner.entitys.Journey;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
-import java.util.Map;
 
 @Service
 public class CarbonCalculationService {
@@ -15,7 +14,7 @@ public class CarbonCalculationService {
 //  "WALK", 0.0,
 //  "BUS", 0.08
 
-    private static final double BASELINE_FACTOR = 0.17;
+    private static final double BASELINE_FACTOR = 0.192;
     private static final BigDecimal KG_CO2_TO_CREDITS_RATE = new BigDecimal("1.0"); // 1 credit per 1kg CO2
 
     public BigDecimal calculateCarbonSaved(Journey journey) {
