@@ -20,8 +20,9 @@ spring:
 
   flyway:
     enabled: true
+    clean-disabled: false
     locations: classpath:db/migration
-    connect-retries: 10 
+    connect-retries: 10
 
 # CORS cho frontend Next.js
 app:

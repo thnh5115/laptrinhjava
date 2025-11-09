@@ -26,20 +26,20 @@ public class CreditOrder {
     @JoinColumn(name = "buyer_id", nullable = false)
     private Buyer buyer;
 
-    @Column(nullable = false)
+    @JoinColumn(nullable = false)
     private Integer credits; 
 
-    @Column(nullable = false)
+    @JoinColumn(nullable = false)
     private Double pricePerUnit;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JoinColumn(nullable = false)
     private TrStatus status;
 
-    @Column(nullable = false)
+    @JoinColumn(nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
+    @JoinColumn(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

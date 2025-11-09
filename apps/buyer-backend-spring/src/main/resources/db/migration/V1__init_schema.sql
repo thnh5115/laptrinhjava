@@ -1,170 +1,146 @@
--- ====================================================================
---  Carbon Credit Marketplace - Buyer Backend (Full Schema)
--- ====================================================================
+-- Charset & engine
 SET NAMES utf8mb4;
-SET time_zone = '+00:00';
 SET FOREIGN_KEY_CHECKS = 0;
 
--- =========================================================
--- USERS / BUYERS
--- =========================================================
+-- 1) BUYERS
+
 CREATE TABLE IF NOT EXISTS buyers (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(150) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
-    phone VARCHAR(30),
-    status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
-    balance DECIMAL(19,4) NOT NULL DEFAULT 0,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  balance DOUBLE NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- =========================================================
--- LISTINGS (carbon credit listings)
--- =========================================================
+CREATE INDEX idx_buyers_email ON buyers(email);
+
+-- 2) CARBON CREDITS
+
+CREATE TABLE IF NOT EXISTS carbon_credits (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  owner_id BIGINT,
+  title VARCHAR(150),
+  standard VARCHAR(50),
+  credit_type VARCHAR(50),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 3) LISTINGS
+
 CREATE TABLE IF NOT EXISTS listings (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    quantity DECIMAL(19,4) NOT NULL,
-    unit_price DECIMAL(19,4) NOT NULL,
-    total_value DECIMAL(19,4) GENERATED ALWAYS AS (quantity * unit_price) STORED,
-    status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',       -- ACTIVE, SOLD, CANCELLED
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  buyer_id BIGINT NOT NULL,
+  type VARCHAR(30) NOT NULL,                -- FIXED_PRICE | AUCTION
+  quantity INT,
+  available_qty INT,
+  price_per_unit DOUBLE,
+  status VARCHAR(30) NOT NULL,              -- DRAFT | OPEN | LOCKED | CLOSED ...
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_listing_buyer FOREIGN KEY (buyer_id) REFERENCES buyers(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- =========================================================
--- AUCTIONS
--- =========================================================
+CREATE INDEX idx_listings_status ON listings(status);
+CREATE INDEX idx_listings_type ON listings(type);
+
+-- 4) AUCTIONS
+
 CREATE TABLE IF NOT EXISTS auctions (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    listing_id BIGINT NOT NULL,
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP NOT NULL,
-    current_price DECIMAL(19,4) DEFAULT 0,
-    status VARCHAR(30) NOT NULL DEFAULT 'OPEN',         -- OPEN, CLOSED, CANCELLED
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_auction_listing FOREIGN KEY (listing_id)
-        REFERENCES listings(id)
-        ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  listing_id BIGINT NOT NULL,
+  start_price DOUBLE NOT NULL,
+  step_price DOUBLE NOT NULL,
+  start_time DATETIME NOT NULL,
+  end_time DATETIME NOT NULL,
+  CONSTRAINT fk_auction_listing FOREIGN KEY (listing_id) REFERENCES listings(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE INDEX idx_auction_listing ON auctions(listing_id);
+CREATE INDEX idx_auctions_listing_id ON auctions(listing_id);
 
--- =========================================================
--- BIDS
--- =========================================================
+-- 5) BIDS
+
 CREATE TABLE IF NOT EXISTS bids (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    auction_id BIGINT NOT NULL,
-    buyer_id BIGINT NOT NULL,
-    amount DECIMAL(19,4) NOT NULL,
-    bid_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_bid_auction FOREIGN KEY (auction_id)
-        REFERENCES auctions(id)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT fk_bid_buyer FOREIGN KEY (buyer_id)
-        REFERENCES buyers(id)
-        ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  auction_id BIGINT NOT NULL,
+  buyer_id BIGINT NOT NULL,
+  amount DOUBLE NOT NULL,
+  status VARCHAR(20) NOT NULL,              -- LEADING | OUTBID | WON | LOST
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_bid_auction FOREIGN KEY (auction_id) REFERENCES auctions(id),
+  CONSTRAINT fk_bid_buyer FOREIGN KEY (buyer_id) REFERENCES buyers(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE INDEX idx_bid_auction ON bids(auction_id);
-CREATE INDEX idx_bid_buyer ON bids(buyer_id);
+CREATE INDEX idx_bids_auction_id ON bids(auction_id);
+CREATE INDEX idx_bids_buyer_id ON bids(buyer_id);
 
--- =========================================================
--- CREDIT ORDERS
--- =========================================================
-CREATE TABLE IF NOT EXISTS credit_orders (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    buyer_id BIGINT NOT NULL,
-    quantity DECIMAL(19,4) NOT NULL,
-    unit_price DECIMAL(19,4) NOT NULL,
-    total_amount DECIMAL(19,4) GENERATED ALWAYS AS (quantity * unit_price) STORED,
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',      -- PENDING, APPROVED, REJECTED, COMPLETED
-    note VARCHAR(500),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_credit_orders_buyer FOREIGN KEY (buyer_id)
-        REFERENCES buyers(id)
-        ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- 6) TRANSACTIONS
 
--- =========================================================
--- TRANSACTIONS
--- =========================================================
 CREATE TABLE IF NOT EXISTS transactions (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    credit_order_id BIGINT NULL,
-    listing_id BIGINT NULL,
-    tx_type VARCHAR(30) NOT NULL,                       -- CREDIT_PURCHASE, REFUND, AUCTION_PAYMENT
-    tx_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
-    amount DECIMAL(19,4) NOT NULL,
-    metadata JSON NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_tx_credit_order FOREIGN KEY (credit_order_id)
-        REFERENCES credit_orders(id)
-        ON UPDATE CASCADE ON DELETE SET NULL,
-    CONSTRAINT fk_tx_listing FOREIGN KEY (listing_id)
-        REFERENCES listings(id)
-        ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  buyer_id BIGINT NOT NULL,
+  listing_id BIGINT NOT NULL,
+  qty INT NOT NULL,
+  amount DOUBLE NOT NULL,
+  status VARCHAR(20) NOT NULL,              -- PENDING | PAID | ISSUED | COMPLETED | FAILED | REFUNDED
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_tx_buyer  FOREIGN KEY (buyer_id)  REFERENCES buyers(id),
+  CONSTRAINT fk_tx_listing FOREIGN KEY (listing_id) REFERENCES listings(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- =========================================================
--- PAYMENTS
--- =========================================================
+CREATE INDEX idx_tx_buyer_id ON transactions(buyer_id);
+CREATE INDEX idx_tx_listing_id ON transactions(listing_id);
+CREATE INDEX idx_tx_status ON transactions(status);
+
+-- 7) PAYMENTS
+
 CREATE TABLE IF NOT EXISTS payments (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tx_id BIGINT NOT NULL,
-    method VARCHAR(50) NOT NULL,                        -- VNPAY, MOMO, BANK_TRANSFER
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',      -- PENDING, SUCCESS, FAILED
-    ref VARCHAR(100),
-    amount DECIMAL(19,4) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_payment_tx FOREIGN KEY (tx_id)
-        REFERENCES transactions(id)
-        ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  tr_id BIGINT NOT NULL,
+  method VARCHAR(50) NOT NULL,
+  status VARCHAR(20) NOT NULL,              -- SUCCESS | FAILED | PENDING...
+  ref VARCHAR(100) UNIQUE,
+  amount DOUBLE NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_payment_tx FOREIGN KEY (tr_id) REFERENCES transactions(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- =========================================================
--- INVOICES
--- =========================================================
+CREATE INDEX idx_payments_tr_id ON payments(tr_id);
+
+-- 8) INVOICES
+
 CREATE TABLE IF NOT EXISTS invoices (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tx_id BIGINT NOT NULL,
-    issue_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    file_path VARCHAR(255) NOT NULL,
-    CONSTRAINT fk_invoice_tx FOREIGN KEY (tx_id)
-        REFERENCES transactions(id)
-        ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  tr_id BIGINT NOT NULL,
+  issue_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  file_path VARCHAR(255) NOT NULL,
+  CONSTRAINT fk_invoice_tx FOREIGN KEY (tr_id) REFERENCES transactions(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- =========================================================
--- NOTIFICATIONS
--- =========================================================
+-- 9) NOTIFICATIONS
+
 CREATE TABLE IF NOT EXISTS notifications (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    buyer_id BIGINT NOT NULL,
-    message VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    read_at TIMESTAMP NULL,
-    CONSTRAINT fk_notification_buyer FOREIGN KEY (buyer_id)
-        REFERENCES buyers(id)
-        ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  buyer_id BIGINT NOT NULL,
+  message VARCHAR(255) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  read_at DATETIME NULL,
+  CONSTRAINT fk_notification_buyer FOREIGN KEY (buyer_id) REFERENCES buyers(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- =========================================================
--- AUDIT LOGS
--- =========================================================
-CREATE TABLE IF NOT EXISTS audit_logs (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    entity VARCHAR(100) NOT NULL,
-    action VARCHAR(50) NOT NULL,
-    performed_by VARCHAR(150),
-    details TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_notifications_buyer_id ON notifications(buyer_id);
+
+-- 10) CREDIT ORDERS
+
+CREATE TABLE IF NOT EXISTS credit_orders (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  buyer_id BIGINT NOT NULL,
+  credits INT NOT NULL,
+  price_per_unit DOUBLE NOT NULL,
+  status VARCHAR(20) NOT NULL,              -- PENDING | APPROVED | REJECTED ...
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_credit_order_buyer FOREIGN KEY (buyer_id) REFERENCES buyers(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 SET FOREIGN_KEY_CHECKS = 1;

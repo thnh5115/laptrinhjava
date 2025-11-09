@@ -16,6 +16,7 @@
     <modules>
         <module>packages/java-common</module>
         <module>apps/admin-backend-spring</module>
+        <module>apps/buyer-backend-spring</module>
     </modules>
 
     <properties>
