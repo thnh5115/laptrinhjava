@@ -15,7 +15,7 @@ import lombok.Setter;
 @Getter
 
 @Entity
-@Table (name = "ev-owners")
+@Table (name = "ev_owners")
 public class EvOwner {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
