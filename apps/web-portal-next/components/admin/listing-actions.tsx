@@ -87,6 +87,8 @@ export function ListingActions({ listingId, onClose, onSuccess }: ListingActions
         return "bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100"
       case "REJECTED":
         return "bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-100"
+      case "DELISTED":
+        return "bg-slate-200 text-slate-900 dark:bg-slate-900 dark:text-slate-100"
       default:
         return ""
     }
@@ -106,8 +108,13 @@ export function ListingActions({ listingId, onClose, onSuccess }: ListingActions
           </div>
         )}
 
-        {!isLoading && listing && (
-          <div className="mt-6 space-y-6">
+        {!isLoading && listing && (() => {
+          const credits = Number(listing.quantity ?? 0)
+          const pricePerCredit = Number(listing.price ?? 0)
+          const totalPrice = pricePerCredit * credits
+          const ownerName = listing.ownerFullName || listing.ownerEmail
+          return (
+            <div className="mt-6 space-y-6">
             {/* Status Badge */}
             <div>
               <label className="text-sm font-medium text-muted-foreground">Status</label>
@@ -131,23 +138,23 @@ export function ListingActions({ listingId, onClose, onSuccess }: ListingActions
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Credits</label>
-                  <p className="text-sm font-medium mt-1">{listing.credits} tCO2</p>
+                  <p className="text-sm font-medium mt-1">{credits} {listing.unit || "tCO2"}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Price/Credit</label>
-                  <p className="text-sm font-medium mt-1">${listing.pricePerCredit.toFixed(2)}</p>
+                  <p className="text-sm font-medium mt-1">${pricePerCredit.toFixed(2)}</p>
                 </div>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Total Price</label>
-                <p className="text-lg font-bold mt-1">${listing.totalPrice.toFixed(2)}</p>
+                <p className="text-lg font-bold mt-1">${totalPrice.toFixed(2)}</p>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Owner</label>
                 <div className="mt-1">
-                  <p className="text-sm font-medium">{listing.ownerName}</p>
+                  <p className="text-sm font-medium">{ownerName}</p>
                   <p className="text-xs text-muted-foreground">{listing.ownerEmail}</p>
                 </div>
               </div>
@@ -164,7 +171,8 @@ export function ListingActions({ listingId, onClose, onSuccess }: ListingActions
               </div>
             </div>
           </div>
-        )}
+            )
+          })()}
 
         {!isLoading && listing && listing.status === "PENDING" && (
           <SheetFooter className="mt-6 pt-6 border-t">

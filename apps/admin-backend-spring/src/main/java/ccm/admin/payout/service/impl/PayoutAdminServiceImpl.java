@@ -43,7 +43,7 @@ public class PayoutAdminServiceImpl implements PayoutAdminService {
                 userId, status, fromDate, toDate);
 
         // Build dynamic specification
-        Specification<Payout> spec = Specification.where(null);
+        Specification<Payout> spec = Specification.allOf();
 
         if (userId != null) {
             spec = spec.and(PayoutSpecification.hasUserId(userId));

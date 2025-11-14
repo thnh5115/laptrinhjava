@@ -10,12 +10,14 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
 @Profile("dev")
+@Slf4j
 public class DevDataInitializer implements CommandLineRunner {
 
     private final VerificationRequestRepository verificationRequestRepository;
@@ -31,9 +33,25 @@ public class DevDataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (verificationRequestRepository.count() > 0) {
+        // Guard against missing tables (in case Flyway is disabled or misconfigured)
+        try {
+            long count = verificationRequestRepository.count();
+            if (count > 0) {
+                log.info("Dev data already exists ({} verification requests). Skipping seed.", count);
+                return;
+            }
+        } catch (Exception e) {
+            log.warn("VerificationRequests table not ready; skipping dev data seeding. Root cause: {}", 
+                     e.getMessage());
             return;
         }
+
+        log.info("Seeding dev data for CVA module...");
+        seedVerificationRequests();
+        log.info("Dev data seeding completed successfully.");
+    }
+
+    private void seedVerificationRequests() {
 
         UUID verifierId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
         UUID ownerA = UUID.fromString("11111111-2222-3333-4444-555555555555");
@@ -128,3 +146,4 @@ public class DevDataInitializer implements CommandLineRunner {
         verificationRequestRepository.save(request);
     }
 }
+

@@ -2,12 +2,23 @@ package ccm.buyer.service.impl;
 
 import ccm.buyer.entity.Listing;
 import ccm.buyer.enums.ListingStatus;
+import ccm.buyer.repository.ListingRepository;
+import ccm.buyer.service.ListingService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
-public class ListingServiceImpl {
+@RequiredArgsConstructor
+public class ListingServiceImpl implements ListingService {
+
+  private final ListingRepository listingRepository;
+
+  @Override
+  public List<Listing> getAll() {
+    return listingRepository.findAll();
+  }
 
   public void lockOrOpen(List<Listing> list) {
     for (Listing l : list) {
@@ -20,15 +31,39 @@ public class ListingServiceImpl {
     }
   }
 
+  @Override
   public Listing validateOpen(Long listingId) {
-    throw new UnsupportedOperationException("implement me");
+    Listing listing = listingRepository.findById(listingId)
+        .orElseThrow(() -> new IllegalArgumentException("Listing not found: " + listingId));
+    
+    if (listing.getStatus() != ListingStatus.OPEN) {
+      throw new IllegalStateException("Listing is not open: " + listingId);
+    }
+    
+    return listing;
   }
 
-  public void reserve(Long listingId, Integer qty) {
-    throw new UnsupportedOperationException("implement me");
+  @Override
+  public void reserve(Long listingId, int qty) {
+    Listing listing = listingRepository.findById(listingId)
+        .orElseThrow(() -> new IllegalArgumentException("Listing not found: " + listingId));
+    
+    Integer available = listing.getAvailableQty();
+    if (available == null || available < qty) {
+      throw new IllegalStateException("Not enough quantity available");
+    }
+    
+    listing.setAvailableQty(available - qty);
+    listingRepository.save(listing);
   }
 
-  public void release(Long listingId, Integer qty) {
-    throw new UnsupportedOperationException("implement me");
+  @Override
+  public void release(Long listingId, int qty) {
+    Listing listing = listingRepository.findById(listingId)
+        .orElseThrow(() -> new IllegalArgumentException("Listing not found: " + listingId));
+    
+    Integer available = listing.getAvailableQty();
+    listing.setAvailableQty((available == null ? 0 : available) + qty);
+    listingRepository.save(listing);
   }
 }

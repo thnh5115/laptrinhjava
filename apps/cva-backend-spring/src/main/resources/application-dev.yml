@@ -1,32 +1,29 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/carbon_cva}
+    url: ${DB_URL:jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: none
-    properties:
-      "[hibernate.format_sql]": true
+      ddl-auto: validate
     open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-  jackson:
-    default-property-inclusion: NON_NULL
+    enabled: false
+    locations: classpath:db/migration
+    baseline-on-migrate: true # Handle existing tables gracefully
+    schemas: ccm # Ensure correct schema is used
+    validate-on-migrate: false # Skip checksum validation (useful in dev)
 
 server:
-  port: 8082
-  error:
-    include-binding-errors: always
-    include-message: always
+  port: ${SERVER_PORT:8183}
 
-app:
-  security:
-    allowed-origins:
-      - http://localhost:3000
-      - http://localhost:3001
-    dev-user:
-      username: cva_officer
-      password: password123
+logging:
+  level:
+    org.flywaydb: info
+    org.hibernate.SQL: debug

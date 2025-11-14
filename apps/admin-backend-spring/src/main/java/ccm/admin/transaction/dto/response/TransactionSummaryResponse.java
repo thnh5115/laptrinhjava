@@ -1,5 +1,6 @@
 package ccm.admin.transaction.dto.response;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record TransactionSummaryResponse(
@@ -7,7 +8,7 @@ public record TransactionSummaryResponse(
     String transactionCode,
     String buyerEmail,
     String sellerEmail,
-    Double totalPrice,
+    BigDecimal totalPrice,
     String status,
     LocalDateTime createdAt
 ) {}

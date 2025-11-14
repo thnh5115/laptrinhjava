@@ -13,13 +13,23 @@ import axiosClient from '@/lib/api/axiosClient';
 
 export interface PageResponse<T> {
   content: T[];
-  pageNumber: number;
-  pageSize: number;
+  page: number;
+  size: number;
   totalElements: number;
   totalPages: number;
   first: boolean;
   last: boolean;
   sort: string;
+}
+
+interface SpringPage<T> {
+  content: T[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
 }
 
 export interface UserSummary {
@@ -72,6 +82,7 @@ export interface DisputeSummary {
 
 export interface ListingSummary {
   id: number;
+  carbonCreditId: number;
   title: string;
   description: string;
   ownerEmail: string;
@@ -79,9 +90,12 @@ export interface ListingSummary {
   price: number;
   quantity: number;
   unit: string;
+  listingType: string;
   status: string;
   createdAt: string;
+  updatedAt: string;
   approvedBy?: number;
+  approvedByEmail?: string;
   approvedAt?: string;
   rejectReason?: string;
 }
@@ -464,8 +478,18 @@ export function useReportApi() {
     size?: number;
   } = {}) => {
     return handleRequest(async () => {
-      const res = await axiosClient.get<PageResponse<ReportHistory>>('/admin/reports/history', { params });
-      return res.data;
+      const res = await axiosClient.get<SpringPage<ReportHistory>>('/admin/reports/history', { params });
+      const data = res.data;
+      return {
+        content: data.content,
+        page: data.number,
+        size: data.size,
+        totalElements: data.totalElements,
+        totalPages: data.totalPages,
+        first: data.first,
+        last: data.last,
+        sort: '',
+      } as PageResponse<ReportHistory>;
     });
   }, [handleRequest]);
 

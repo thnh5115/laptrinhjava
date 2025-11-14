@@ -1,6 +1,7 @@
 package ccm.admin.listing.entity;
 
 import ccm.admin.listing.entity.enums.ListingStatus;
+import ccm.admin.listing.entity.enums.ListingType;
 import ccm.admin.user.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -26,7 +27,10 @@ public class Listing {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "carbon_credit_id", nullable = false)
+    private Long carbonCreditId;
+
+    @Column(nullable = false, length = 255)
     private String title;
 
     @Column(columnDefinition = "TEXT")
@@ -35,18 +39,22 @@ public class Listing {
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal price;
 
-    @Column(nullable = false, precision = 15, scale = 2)
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal quantity;
 
     @Column(length = 50)
     private String unit;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "listing_type", nullable = false, length = 20)
+    private ListingType listingType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private ListingStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", nullable = false)
+    @JoinColumn(name = "seller_id", nullable = false)
     @JsonIgnoreProperties({"role", "passwordHash", "createdAt", "updatedAt", "status"})
     private User owner;
 
@@ -74,6 +82,9 @@ public class Listing {
         updatedAt = LocalDateTime.now();
         if (status == null) {
             status = ListingStatus.PENDING;
+        }
+        if (listingType == null) {
+            listingType = ListingType.FIXED_PRICE;
         }
         if (unit == null) {
             unit = "kgCO2";

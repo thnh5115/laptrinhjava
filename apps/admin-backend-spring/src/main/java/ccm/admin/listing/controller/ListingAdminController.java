@@ -14,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -84,8 +85,7 @@ public class ListingAdminController {
             @PathVariable("id") Long id,
             Authentication authentication
     ) {
-        // Get admin ID from authentication (assume username is numeric ID for now)
-        Long adminId = 1L;  // TODO: Extract from authentication principal
+        Long adminId = resolveAdminId(authentication);
 
         ListingSummaryResponse response = listingService.approveListing(id, adminId);
         return ResponseEntity.ok(response);
@@ -102,8 +102,7 @@ public class ListingAdminController {
             Authentication authentication,
             @RequestBody(required = false) ListingModerationRequest request
     ) {
-        // Get admin ID from authentication (assume username is numeric ID for now)
-        Long adminId = 1L;  // TODO: Extract from authentication principal
+        Long adminId = resolveAdminId(authentication);
 
         ListingSummaryResponse response = listingService.rejectListing(id, adminId, request);
         return ResponseEntity.ok(response);
@@ -120,8 +119,7 @@ public class ListingAdminController {
             Authentication authentication,
             @RequestBody(required = false) ListingModerationRequest request
     ) {
-        // Get admin ID from authentication (assume username is numeric ID for now)
-        Long adminId = 1L;  // TODO: Extract from authentication principal
+        Long adminId = resolveAdminId(authentication);
 
         ListingSummaryResponse response = listingService.delistListing(id, adminId, request);
         return ResponseEntity.ok(response);
@@ -139,5 +137,27 @@ public class ListingAdminController {
                 : Sort.Direction.DESC;
 
         return Sort.by(direction, field);
+    }
+
+    private Long resolveAdminId(Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetails userDetails) {
+            return parseUserId(userDetails.getUsername());
+        }
+        return parseUserId(authentication.getName());
+    }
+
+    private Long parseUserId(String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 }

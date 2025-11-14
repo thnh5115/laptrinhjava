@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -74,8 +75,8 @@ public class ReportExportServiceImpl implements ReportExportService {
                     tx.getTransactionCode(),
                     tx.getBuyerEmail(),
                     tx.getSellerEmail(),
-                    String.valueOf(tx.getAmount()),
-                    String.valueOf(tx.getTotalPrice()),
+                    formatDecimal(tx.getAmount()),
+                    formatDecimal(tx.getTotalPrice()),
                     tx.getStatus().name(),
                     tx.getType().name(),
                     tx.getCreatedAt().format(DATE_FORMATTER)
@@ -133,8 +134,8 @@ public class ReportExportServiceImpl implements ReportExportService {
                 row.createCell(1).setCellValue(tx.getTransactionCode());
                 row.createCell(2).setCellValue(tx.getBuyerEmail());
                 row.createCell(3).setCellValue(tx.getSellerEmail());
-                row.createCell(4).setCellValue(tx.getAmount());
-                row.createCell(5).setCellValue(tx.getTotalPrice());
+                row.createCell(4).setCellValue(decimalToDouble(tx.getAmount()));
+                row.createCell(5).setCellValue(decimalToDouble(tx.getTotalPrice()));
                 row.createCell(6).setCellValue(tx.getStatus().name());
                 row.createCell(7).setCellValue(tx.getType().name());
                 row.createCell(8).setCellValue(tx.getCreatedAt().format(DATE_FORMATTER));
@@ -201,7 +202,7 @@ public class ReportExportServiceImpl implements ReportExportService {
                             tx.getId(),
                             truncate(tx.getTransactionCode(), 14),
                             truncate(tx.getBuyerEmail(), 18),
-                            tx.getAmount(),
+                            decimalToDouble(tx.getAmount()),
                             tx.getStatus().name(),
                             tx.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
                     );
@@ -375,6 +376,14 @@ public class ReportExportServiceImpl implements ReportExportService {
             log.error("Failed to export users to PDF", e);
             throw new RuntimeException("Failed to export users to PDF", e);
         }
+    }
+
+    private static String formatDecimal(BigDecimal value) {
+        return value != null ? value.toPlainString() : "0";
+    }
+
+    private static double decimalToDouble(BigDecimal value) {
+        return value != null ? value.doubleValue() : 0.0d;
     }
 
     private List<Transaction> fetchTransactions(

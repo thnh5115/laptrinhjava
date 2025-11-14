@@ -185,6 +185,7 @@ public class ListingAdminServiceImpl implements ListingAdminService {
         
         return ListingSummaryResponse.builder()
                 .id(listing.getId())
+                .carbonCreditId(listing.getCarbonCreditId())
                 .title(listing.getTitle())
                 .description(listing.getDescription())
                 .ownerEmail(listing.getOwner() != null ? listing.getOwner().getEmail() : null)
@@ -192,6 +193,7 @@ public class ListingAdminServiceImpl implements ListingAdminService {
                 .price(listing.getPrice())
                 .quantity(listing.getQuantity())
                 .unit(listing.getUnit())
+                .listingType(listing.getListingType() != null ? listing.getListingType().name() : null)
                 .status(listing.getStatus() != null ? listing.getStatus().name() : null)
                 .createdAt(listing.getCreatedAt())
                 .updatedAt(listing.getUpdatedAt())

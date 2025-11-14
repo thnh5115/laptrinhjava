@@ -45,7 +45,7 @@ public class CarbonCreditAdminServiceImpl implements CarbonCreditAdminService {
                 ownerId, status, minPrice, maxPrice, journeyId);
 
         // Build dynamic specification
-        Specification<CarbonCredit> spec = Specification.where(null);
+        Specification<CarbonCredit> spec = Specification.allOf();
 
         if (ownerId != null) {
             spec = spec.and(CarbonCreditSpecification.hasOwnerId(ownerId));

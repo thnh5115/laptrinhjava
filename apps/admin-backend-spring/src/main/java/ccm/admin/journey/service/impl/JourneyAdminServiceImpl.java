@@ -47,7 +47,7 @@ public class JourneyAdminServiceImpl implements JourneyAdminService {
                 keyword, status, fromDate, toDate, userId);
 
         // Build specifications
-        Specification<Journey> spec = Specification.where(null);
+        Specification<Journey> spec = Specification.allOf();
 
         if (keyword != null && !keyword.isBlank()) {
             spec = spec.and(JourneySpecification.hasKeyword(keyword));

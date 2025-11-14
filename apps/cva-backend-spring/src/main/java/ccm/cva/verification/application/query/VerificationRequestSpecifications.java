@@ -11,7 +11,7 @@ public final class VerificationRequestSpecifications {
     }
 
     public static Specification<VerificationRequest> fromQuery(VerificationRequestQuery query) {
-        Specification<VerificationRequest> spec = Specification.where(null);
+        Specification<VerificationRequest> spec = Specification.allOf();
         if (query == null) {
             return spec;
         }

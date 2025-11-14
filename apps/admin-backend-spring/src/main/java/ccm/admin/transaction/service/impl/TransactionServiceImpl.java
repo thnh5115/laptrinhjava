@@ -74,7 +74,7 @@ public class TransactionServiceImpl implements TransactionService {
             .stream()
             .map(t -> new TransactionSummaryResponse(
                 t.getId(),
-                t.getTransactionCode(),
+                resolveTransactionCode(t),
                 t.getBuyerEmail(),
                 t.getSellerEmail(),
                 t.getTotalPrice(),
@@ -150,7 +150,7 @@ public class TransactionServiceImpl implements TransactionService {
             
             TransactionAuditLog auditLog = TransactionAuditLog.builder()
                     .transactionId(transaction.getId())
-                    .transactionCode(transaction.getTransactionCode())
+                    .transactionCode(resolveTransactionCode(transaction))
                     .oldStatus(currentStatus)
                     .newStatus(newStatus)
                     .changedBy(currentUser)
@@ -165,5 +165,12 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalStateException(
                 "Transaction was modified by another user. Please refresh and try again.", e);
         }
+    }
+
+    private String resolveTransactionCode(Transaction transaction) {
+        if (transaction.getTransactionCode() != null && !transaction.getTransactionCode().isBlank()) {
+            return transaction.getTransactionCode();
+        }
+        return String.format("TX-%06d", transaction.getId());
     }
 }

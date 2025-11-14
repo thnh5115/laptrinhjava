@@ -44,7 +44,9 @@ export interface PageResponse<T> {
 export interface TransactionQueryParams {
   page?: number;
   size?: number;
-  sort?: string; // Combined sort format: "field,direction" (e.g., "createdAt,desc")
+  sort?: string; // Combined sort format: "field,direction"
+  sortBy?: string;
+  direction?: "asc" | "desc";
   keyword?: string;
   status?: TransactionStatus | "ALL";
   type?: TransactionType | "ALL";
@@ -67,8 +69,12 @@ export async function listTransactions(
   const cleanParams: Record<string, any> = {
     page: params.page ?? 0,
     size: params.size ?? 10,
-    sort: params.sort ?? "createdAt,desc", // Combined sort format
   };
+
+  const sortValue =
+    params.sort ??
+    (params.sortBy ? `${params.sortBy},${params.direction ?? "desc"}` : undefined);
+  cleanParams.sort = sortValue ?? "createdAt,desc";
 
   if (params.keyword && params.keyword.trim()) {
     cleanParams.keyword = params.keyword.trim();

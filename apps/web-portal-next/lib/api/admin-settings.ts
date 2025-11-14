@@ -34,7 +34,7 @@ export interface UpdateSettingRequest {
  */
 export const getSettings = async (): Promise<SettingResponse[]> => {
   try {
-    const response = await axiosClient.get<SettingResponse[]>('admin/settings');
+    const response = await axiosClient.get<SettingResponse[]>('/admin/settings');
     console.log('[Settings] Fetched settings:', response.data);
     return response.data;
   } catch (error: any) {
@@ -56,7 +56,7 @@ export const updateSetting = async (
 ): Promise<SettingResponse> => {
   try {
     const response = await axiosClient.put<SettingResponse>(
-      `admin/settings/${id}`,
+      `/admin/settings/${id}`,
       data
     );
     console.log('[Settings] Updated setting:', response.data);

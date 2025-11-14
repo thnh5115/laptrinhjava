@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 
 public class ListingSummaryResponse {
     private Long id;
+    private Long carbonCreditId;
     private String title;
     private String description;
     private String ownerEmail;
@@ -19,6 +20,7 @@ public class ListingSummaryResponse {
     private BigDecimal price;
     private BigDecimal quantity;
     private String unit;
+    private String listingType;
     private String status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

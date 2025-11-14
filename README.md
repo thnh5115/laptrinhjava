@@ -29,7 +29,7 @@ carbon-credit-marketplace/
 │   ├── cva-backend-spring/         # 🔲 Backend CVA (Placeholder)
 │   ├── owner-backend-spring/       # 🔲 Backend EV Owner (Placeholder)
 │   ├── buyer-backend-spring/       # 🔲 Backend Buyer (Placeholder)
-│   └── web-portal-next/            # 🔲 Frontend Portal (Next.js)
+│   └── apps/web-portal-next/            # 🔲 Frontend Portal (Next.js)
 ├── packages/                       # Thư viện dùng chung
 │   ├── java-common/                # ✅ Java shared library
 │   ├── ts-sdk/                     # 🔲 TypeScript SDK
@@ -388,7 +388,7 @@ pnpm test:e2e
 | **EV Owner** | `owner-backend-spring` | 🔲 Placeholder |
 | **Buyer**    | `buyer-backend-spring` | 🔲 Placeholder |
 
-**Frontend:** Tất cả roles tích hợp trong `web-portal-next`
+**Frontend:** Tất cả roles tích hợp trong `apps/web-portal-next`
 
 ---
 

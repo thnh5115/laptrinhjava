@@ -8,13 +8,22 @@ COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 COPY packages/java-common/pom.xml packages/java-common/
+COPY apps/admin-backend-spring/pom.xml apps/admin-backend-spring/
+COPY apps/buyer-backend-spring/pom.xml apps/buyer-backend-spring/
+COPY apps/cva-backend-spring/pom.xml apps/cva-backend-spring/
 COPY apps/owner-backend-spring/pom.xml apps/owner-backend-spring/
+COPY packages/java-common/src packages/java-common/src
+
+# Fix CRLF issues and ensure executable bit for mvnw
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
+
+# Build shared module
+RUN ./mvnw -pl packages/java-common -am install -DskipTests
 
 # Download dependencies
 RUN ./mvnw dependency:go-offline -B
 
 # Copy source code
-COPY packages/java-common/src packages/java-common/src
 COPY apps/owner-backend-spring/src apps/owner-backend-spring/src
 COPY apps/owner-backend-spring/lombok.config apps/owner-backend-spring/
 

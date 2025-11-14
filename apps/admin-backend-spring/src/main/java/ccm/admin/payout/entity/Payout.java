@@ -26,8 +26,12 @@ public class Payout {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    /** Wallet the payout will be deducted from */
+    @Column(name = "e_wallet_id", nullable = false)
+    private Long eWalletId;
+
     /** Amount requested for withdrawal */
-    @Column(name = "amount", precision = 10, scale = 2, nullable = false)
+    @Column(name = "amount", precision = 15, scale = 2, nullable = false)
     private BigDecimal amount;
 
     /** Current status of the payout request */

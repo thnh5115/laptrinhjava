@@ -4,13 +4,11 @@ import ccm.admin.analytics.dto.response.DisputeRatioResponse;
 import ccm.admin.analytics.dto.response.SystemKpiResponse;
 import ccm.admin.analytics.dto.response.TransactionTrendResponse;
 import ccm.admin.analytics.service.AnalyticsService;
-import ccm.admin.dispute.entity.Dispute;
 import ccm.admin.dispute.entity.enums.DisputeStatus;
 import ccm.admin.dispute.repository.DisputeRepository;
 import ccm.admin.user.repository.UserRepository;
-import ccm.admin.transaction.entity.Transaction;
-import ccm.admin.transaction.entity.enums.TransactionStatus;
 import ccm.admin.transaction.repository.TransactionRepository;
+import ccm.admin.transaction.repository.projection.TransactionMonthlyStatsProjection;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -18,8 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -53,11 +52,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         log.debug("Total disputes: {}", totalDisputes);
 
         
-        List<Transaction> allTransactions = transactionRepository.findAll();
-        double totalRevenue = allTransactions.stream()
-                .filter(t -> t.getStatus() == TransactionStatus.APPROVED)
-                .mapToDouble(Transaction::getTotalPrice)
-                .sum();
+        double totalRevenue = transactionRepository.calculateApprovedRevenue();
         log.debug("Total revenue: ${}", totalRevenue);
 
         
@@ -85,7 +80,12 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     public TransactionTrendResponse getTransactionTrends(int year) {
         log.info("Calculating transaction trends for year: {}", year);
 
-        List<Transaction> allTransactions = transactionRepository.findAll();
+        var monthlyStats = transactionRepository.findMonthlyStatsByYear(year);
+        Map<Integer, TransactionMonthlyStatsProjection> statsByMonth = monthlyStats.stream()
+                .collect(Collectors.toMap(
+                        TransactionMonthlyStatsProjection::getMonth,
+                        Function.identity(),
+                        (existing, replacement) -> existing));
         Map<String, Long> monthlyTransactions = new LinkedHashMap<>();
         Map<String, Double> monthlyRevenue = new LinkedHashMap<>();
 
@@ -95,18 +95,11 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             String monthKey = String.format("%d-%02d", year, month);
 
             
-            long transactionCount = allTransactions.stream()
-                    .filter(t -> t.getCreatedAt().getYear() == year 
-                              && t.getCreatedAt().getMonthValue() == currentMonth)
-                    .count();
-
-            
-            double revenue = allTransactions.stream()
-                    .filter(t -> t.getStatus() == TransactionStatus.APPROVED
-                              && t.getCreatedAt().getYear() == year
-                              && t.getCreatedAt().getMonthValue() == currentMonth)
-                    .mapToDouble(Transaction::getTotalPrice)
-                    .sum();
+            TransactionMonthlyStatsProjection stat = statsByMonth.get(currentMonth);
+            long transactionCount = stat != null ? stat.getTransactionCount() : 0L;
+            double revenue = stat != null && stat.getApprovedRevenue() != null
+                    ? stat.getApprovedRevenue().doubleValue()
+                    : 0.0;
 
             monthlyTransactions.put(monthKey, transactionCount);
             monthlyRevenue.put(monthKey, revenue);
@@ -131,26 +124,12 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     public DisputeRatioResponse getDisputeRatios() {
         log.info("Calculating dispute ratio statistics");
 
-        List<Dispute> allDisputes = disputeRepository.findAll();
+        long openCount = disputeRepository.countByStatus(DisputeStatus.OPEN);
+        long resolvedCount = disputeRepository.countByStatus(DisputeStatus.RESOLVED);
+        long rejectedCount = disputeRepository.countByStatus(DisputeStatus.REJECTED);
+        long inReviewCount = disputeRepository.countByStatus(DisputeStatus.IN_REVIEW);
 
-        
-        long openCount = allDisputes.stream()
-                .filter(d -> d.getStatus() == DisputeStatus.OPEN)
-                .count();
-
-        long resolvedCount = allDisputes.stream()
-                .filter(d -> d.getStatus() == DisputeStatus.RESOLVED)
-                .count();
-
-        long rejectedCount = allDisputes.stream()
-                .filter(d -> d.getStatus() == DisputeStatus.REJECTED)
-                .count();
-
-        long inReviewCount = allDisputes.stream()
-                .filter(d -> d.getStatus() == DisputeStatus.IN_REVIEW)
-                .count();
-
-        long total = allDisputes.size();
+        long total = openCount + resolvedCount + rejectedCount + inReviewCount;
 
         log.debug("Dispute breakdown - Open: {}, In Review: {}, Resolved: {}, Rejected: {}, Total: {}",
                 openCount, inReviewCount, resolvedCount, rejectedCount, total);

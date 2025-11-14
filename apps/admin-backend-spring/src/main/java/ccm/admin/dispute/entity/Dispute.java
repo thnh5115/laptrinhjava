@@ -1,6 +1,8 @@
 package ccm.admin.dispute.entity;
 
 import ccm.admin.dispute.entity.enums.DisputeStatus;
+import ccm.admin.user.entity.User;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.persistence.*;
 import lombok.*;
@@ -32,8 +34,10 @@ public class Dispute {
     private Long transactionId;
 
     
-    @Column(nullable = false)
-    private String raisedBy;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "raised_by_user_id", nullable = false)
+    @JsonIgnoreProperties({"role", "passwordHash", "createdAt", "updatedAt", "status"})
+    private User raisedByUser;
 
     
     @Column(columnDefinition = "TEXT")

@@ -21,7 +21,7 @@
     validate-on-migrate: false # Skip checksum validation (useful in dev)
 
 server:
-  port: ${SERVER_PORT:8181}
+  port: ${SERVER_PORT:8182}
 
 logging:
   level:

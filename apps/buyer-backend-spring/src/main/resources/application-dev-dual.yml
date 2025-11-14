@@ -1,0 +1,58 @@
+spring:
+  datasource:
+    # PRIMARY: Buyer Module Database
+    buyer:
+      url: ${DB_URL_BUYER:jdbc:mysql://localhost:3308/ccm_buyer?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+      username: ${DB_USERNAME_BUYER:ccm_buyer}
+      password: ${DB_PASSWORD_BUYER:ccm_buyer_pw}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 10
+        minimum-idle: 2
+        idle-timeout: 60000
+        connection-timeout: 30000
+        pool-name: BuyerHikariCP
+
+    # ADMIN: Shared Database (read-only access to core tables)
+    admin:
+      url: ${DB_URL_ADMIN:jdbc:mysql://localhost:3306/ccm_admin?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+      username: ${DB_USERNAME_ADMIN:ccm_admin}
+      password: ${DB_PASSWORD_ADMIN:ccm_admin_pw}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 5
+        minimum-idle: 1
+        read-only: true
+        pool-name: AdminSharedHikariCP
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    url: ${DB_URL_BUYER:jdbc:mysql://localhost:3308/ccm_buyer?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    user: ${DB_USERNAME_BUYER:ccm_buyer}
+    password: ${DB_PASSWORD_BUYER:ccm_buyer_pw}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  jackson:
+    serialization:
+      FAIL_ON_EMPTY_BEANS: false
+    default-property-inclusion: NON_NULL
+
+server:
+  port: 8081
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:my-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256}
+      expiration-ms: ${JWT_EXPIRATION_MS:900000}
+      refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}

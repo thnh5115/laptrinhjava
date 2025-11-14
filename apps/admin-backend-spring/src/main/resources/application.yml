@@ -53,3 +53,7 @@ springdoc:
 app:
   frontend:
     origin: ${FRONTEND_ORIGIN:http://localhost:3000}
+
+
+
+

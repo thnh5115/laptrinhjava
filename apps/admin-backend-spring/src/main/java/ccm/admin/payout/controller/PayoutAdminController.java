@@ -73,8 +73,7 @@ public class PayoutAdminController {
             Authentication authentication,
             @RequestBody(required = false) UpdatePayoutStatusRequest request
     ) {
-        // Get admin ID from authentication (assume username is numeric ID for now)
-        Long adminId = 1L;  // TODO: Extract from authentication principal
+        Long adminId = resolveAdminId(authentication);
         PayoutDetailResponse payout = payoutAdminService.approvePayout(id, adminId, request);
         return ResponseEntity.ok(payout);
     }
@@ -90,9 +89,30 @@ public class PayoutAdminController {
             Authentication authentication,
             @RequestBody(required = false) UpdatePayoutStatusRequest request
     ) {
-        // Get admin ID from authentication (assume username is numeric ID for now)
-        Long adminId = 1L;  // TODO: Extract from authentication principal
+        Long adminId = resolveAdminId(authentication);
         PayoutDetailResponse payout = payoutAdminService.rejectPayout(id, adminId, request);
         return ResponseEntity.ok(payout);
+    }
+
+    private Long resolveAdminId(Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetails userDetails) {
+            return parseUserId(userDetails.getUsername());
+        }
+        return parseUserId(authentication.getName());
+    }
+
+    private Long parseUserId(String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 }

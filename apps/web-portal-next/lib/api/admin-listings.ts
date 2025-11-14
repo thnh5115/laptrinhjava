@@ -11,20 +11,27 @@ export enum ListingStatus {
   PENDING = "PENDING",
   APPROVED = "APPROVED",
   REJECTED = "REJECTED",
+  DELISTED = "DELISTED",
 }
 
 export interface ListingSummary {
   id: number;
+  carbonCreditId: number;
   title: string;
   description: string;
-  credits: number;           // tCO2
-  pricePerCredit: number;    // USD
-  totalPrice: number;        // credits * pricePerCredit
-  status: ListingStatus;
   ownerEmail: string;
-  ownerName: string;
-  createdAt: string;         // ISO 8601
+  ownerFullName: string;
+  price: number;
+  quantity: number;
+  unit: string;
+  listingType: string;
+  status: ListingStatus | string;
+  createdAt: string;
   updatedAt: string;
+  approvedBy?: number;
+  approvedByEmail?: string;
+  approvedAt?: string;
+  rejectReason?: string;
 }
 
 export interface PageResponse<T> {
@@ -56,7 +63,7 @@ export interface UpdateListingStatusRequest {
  */
 export async function getListings(params: ListingFilterParams = {}) {
   const { data } = await axiosClient.get<PageResponse<ListingSummary>>(
-    "admin/listings",
+    "/admin/listings",
     { params }
   );
   return data;
@@ -67,7 +74,7 @@ export async function getListings(params: ListingFilterParams = {}) {
  * Get listing details by ID
  */
 export async function getListing(id: string | number) {
-  const { data } = await axiosClient.get<ListingSummary>(`admin/listings/${id}`);
+  const { data } = await axiosClient.get<ListingSummary>(`/admin/listings/${id}`);
   return data;
 }
 
@@ -77,7 +84,7 @@ export async function getListing(id: string | number) {
  */
 export async function updateListingStatus(id: string | number, status: ListingStatus) {
   const { data } = await axiosClient.put<ListingSummary>(
-    `admin/listings/${id}/status`,
+    `/admin/listings/${id}/status`,
     { status }
   );
   return data;

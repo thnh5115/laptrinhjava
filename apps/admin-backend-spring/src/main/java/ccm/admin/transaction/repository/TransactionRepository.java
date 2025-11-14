@@ -2,12 +2,14 @@ package ccm.admin.transaction.repository;
 
 import ccm.admin.transaction.entity.Transaction;
 import ccm.admin.transaction.entity.enums.TransactionStatus;
+import ccm.admin.transaction.repository.projection.TransactionMonthlyStatsProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /** repository - Service Interface - repository business logic and data operations */
 
@@ -17,14 +19,27 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     
     long countByStatus(TransactionStatus status);
     
+    @Query(value = "SELECT COALESCE(SUM(total_amount), 0) FROM transactions WHERE status = :status", nativeQuery = true)
+    BigDecimal sumTotalAmountByStatus(@Param("status") String status);
     
-    @Query("SELECT COALESCE(SUM(t.totalPrice), 0.0) FROM Transaction t WHERE t.status = :status")
-    Double sumTotalPriceByStatus(@Param("status") TransactionStatus status);
     
-    
-    default Double calculateApprovedRevenue() {
-        return sumTotalPriceByStatus(TransactionStatus.APPROVED);
+    default double calculateApprovedRevenue() {
+        BigDecimal total = sumTotalAmountByStatus(TransactionStatus.APPROVED.name());
+        return total != null ? total.doubleValue() : 0.0;
     }
+    
+    
+    @Query(value = """
+            SELECT 
+                MONTH(created_at)   AS month,
+                COUNT(*)            AS transactionCount,
+                COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN total_amount ELSE 0 END), 0) AS approvedRevenue
+            FROM transactions
+            WHERE YEAR(created_at) = :year
+            GROUP BY MONTH(created_at)
+            ORDER BY month
+            """, nativeQuery = true)
+    List<TransactionMonthlyStatsProjection> findMonthlyStatsByYear(@Param("year") int year);
     
     /**
      * Count transactions involving a specific user (as buyer or seller)

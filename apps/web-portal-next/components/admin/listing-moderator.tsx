@@ -73,6 +73,8 @@ export function ListingModerator() {
         return "bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100"
       case "REJECTED":
         return "bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-100"
+      case "DELISTED":
+        return "bg-slate-200 text-slate-900 dark:bg-slate-900 dark:text-slate-100"
       default:
         return ""
     }
@@ -111,6 +113,7 @@ export function ListingModerator() {
                   <SelectItem value="PENDING">Pending</SelectItem>
                   <SelectItem value="APPROVED">Approved</SelectItem>
                   <SelectItem value="REJECTED">Rejected</SelectItem>
+                  <SelectItem value="DELISTED">Delisted</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -155,42 +158,47 @@ export function ListingModerator() {
                         No listings found
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    listings.map((listing) => (
-                      <TableRow key={listing.id}>
-                        <TableCell className="font-mono text-xs">{listing.id}</TableCell>
-                        <TableCell className="font-medium max-w-[200px] truncate" title={listing.title}>
-                          {listing.title}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{listing.ownerName}</p>
-                            <p className="text-xs text-muted-foreground">{listing.ownerEmail}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{listing.credits} tCO2</TableCell>
-                        <TableCell>${listing.pricePerCredit.toFixed(2)}</TableCell>
-                        <TableCell className="font-medium">
-                          ${listing.totalPrice.toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(listing.status)}>{listing.status}</Badge>
-                        </TableCell>
-                        <TableCell>{new Date(listing.createdAt).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setSelectedListing(listing.id)}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                            {listing.status === "PENDING" && (
-                              <>
-                                <Button
-                                  size="sm"
+          ) : (
+            listings.map((listing) => {
+              const credits = Number(listing.quantity ?? 0)
+              const pricePerCredit = Number(listing.price ?? 0)
+              const totalPrice = pricePerCredit * credits
+              const ownerName = listing.ownerFullName || listing.ownerEmail
+              return (
+                <TableRow key={listing.id}>
+                  <TableCell className="font-mono text-xs">{listing.id}</TableCell>
+                  <TableCell className="font-medium max-w-[200px] truncate" title={listing.title}>
+                    {listing.title}
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">{ownerName}</p>
+                      <p className="text-xs text-muted-foreground">{listing.ownerEmail}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>{credits} {listing.unit || "tCO2"}</TableCell>
+                  <TableCell>${pricePerCredit.toFixed(2)}</TableCell>
+                  <TableCell className="font-medium">
+                    ${totalPrice.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(listing.status)}>{listing.status}</Badge>
+                  </TableCell>
+                  <TableCell>{new Date(listing.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedListing(listing.id)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                      {listing.status === "PENDING" && (
+                        <>
+                          <Button
+                            size="sm"
                                   variant="outline"
                                   className="text-emerald-600 hover:text-emerald-700"
                                   onClick={() => setSelectedListing(listing.id)}
@@ -204,14 +212,15 @@ export function ListingModerator() {
                                   onClick={() => setSelectedListing(listing.id)}
                                 >
                                   <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })
+          )}
                 </TableBody>
               </Table>
 

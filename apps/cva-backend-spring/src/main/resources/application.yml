@@ -34,7 +34,7 @@ app:
       - ${APP_FRONTEND_ORIGIN:http://localhost:3000}
     dev-user:
       username: ${APP_SECURITY_DEV_USERNAME:cva_officer}
-      password: ${APP_SECURITY_DEV_PASSWORD:ChangeMe123!}
+      password: 123456
   rate-limit:
     approve:
       limit: ${APP_RATE_LIMIT_APPROVE_LIMIT:10}
@@ -48,3 +48,7 @@ app:
     default-rule:
       limit: ${APP_RATE_LIMIT_DEFAULT_LIMIT:30}
       window: ${APP_RATE_LIMIT_DEFAULT_WINDOW:1m}
+
+
+
+

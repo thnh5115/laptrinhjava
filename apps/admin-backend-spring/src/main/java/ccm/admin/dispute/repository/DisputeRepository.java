@@ -22,6 +22,6 @@ public interface DisputeRepository extends JpaRepository<Dispute, Long>,
      * @param userEmail The user email
      * @return Number of disputes
      */
-    @Query("SELECT COUNT(d) FROM Dispute d WHERE d.raisedBy = :userEmail")
+    @Query("SELECT COUNT(d) FROM Dispute d WHERE LOWER(d.raisedByUser.email) = LOWER(:userEmail)")
     long countByUserEmail(@Param("userEmail") String userEmail);
 }

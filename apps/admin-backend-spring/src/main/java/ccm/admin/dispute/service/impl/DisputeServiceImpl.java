@@ -58,7 +58,7 @@ public class DisputeServiceImpl implements DisputeService {
                 .map(dispute -> DisputeSummaryResponse.builder()
                         .id(dispute.getId())
                         .disputeCode(dispute.getDisputeCode())
-                        .raisedBy(dispute.getRaisedBy())
+                        .raisedBy(resolveRaisedBy(dispute))
                         .status(dispute.getStatus().name())
                         .transactionId(dispute.getTransactionId())
                         .createdAt(dispute.getCreatedAt())
@@ -91,7 +91,7 @@ public class DisputeServiceImpl implements DisputeService {
         DisputeDetailResponse response = DisputeDetailResponse.builder()
                 .id(dispute.getId())
                 .disputeCode(dispute.getDisputeCode())
-                .raisedBy(dispute.getRaisedBy())
+                .raisedBy(resolveRaisedBy(dispute))
                 .description(dispute.getDescription())
                 .adminNote(dispute.getAdminNote())
                 .status(dispute.getStatus().name())
@@ -125,5 +125,9 @@ public class DisputeServiceImpl implements DisputeService {
         disputeRepository.save(dispute);
 
         log.info("Dispute {} status updated to {} by admin", dispute.getDisputeCode(), request.getStatus());
+    }
+
+    private String resolveRaisedBy(Dispute dispute) {
+        return dispute.getRaisedByUser() != null ? dispute.getRaisedByUser().getEmail() : null;
     }
 }

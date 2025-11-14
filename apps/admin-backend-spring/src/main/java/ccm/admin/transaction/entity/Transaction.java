@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,27 +25,33 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "transaction_code", unique = true, nullable = false, length = 100)
+    @Column(name = "buyer_id", nullable = false)
+    private Long buyerId;
+
+    @Column(name = "listing_id", nullable = false)
+    private Long listingId;
+
+    @Column(name = "transaction_code", unique = true, length = 100)
     private String transactionCode;
 
-    @Column(name = "buyer_email", nullable = false)
+    @Column(name = "buyer_email", nullable = true)
     private String buyerEmail;
 
-    @Column(name = "seller_email", nullable = false)
+    @Column(name = "seller_email", nullable = true)
     private String sellerEmail;
 
-    @Column(nullable = false)
-    private Double amount;  
+    @Column(name = "quantity", nullable = false, precision = 10, scale = 2)
+    private BigDecimal amount;  
 
-    @Column(name = "total_price", nullable = false)
-    private Double totalPrice;  
+    @Column(name = "total_amount", nullable = false, precision = 15, scale = 2)
+    private BigDecimal totalPrice;  
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false, length = 20)
     private TransactionStatus status;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "type", nullable = false, length = 30)
     private TransactionType type;
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -54,10 +61,6 @@ public class Transaction {
     private LocalDateTime updatedAt;
 
     
-    @Version
-    @Column(name = "version")
-    private Long version;
-
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
@@ -68,6 +71,9 @@ public class Transaction {
         }
         if (status == null) {
             status = TransactionStatus.PENDING;
+        }
+        if (type == null) {
+            type = TransactionType.CREDIT_PURCHASE;
         }
     }
 

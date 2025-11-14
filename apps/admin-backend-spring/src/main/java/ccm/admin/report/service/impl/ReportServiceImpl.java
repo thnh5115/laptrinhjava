@@ -3,9 +3,9 @@ package ccm.admin.report.service.impl;
 import ccm.admin.report.dto.response.ReportChartResponse;
 import ccm.admin.report.dto.response.ReportSummaryResponse;
 import ccm.admin.report.service.ReportService;
-import ccm.admin.transaction.entity.Transaction;
 import ccm.admin.transaction.entity.enums.TransactionStatus;
 import ccm.admin.transaction.repository.TransactionRepository;
+import ccm.admin.transaction.repository.projection.TransactionMonthlyStatsProjection;
 import ccm.admin.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -70,34 +72,25 @@ public class ReportServiceImpl implements ReportService {
     public ReportChartResponse getMonthlyReport(int year) {
         log.info("Generating monthly report for year: {}", year);
         
-        
-        List<Transaction> transactions = transactionRepository.findAll();
-        
-        
+        Map<Integer, TransactionMonthlyStatsProjection> statsByMonth =
+                transactionRepository.findMonthlyStatsByYear(year).stream()
+                        .collect(Collectors.toMap(
+                                TransactionMonthlyStatsProjection::getMonth,
+                                Function.identity(),
+                                (existing, replacement) -> existing));
+
         Map<String, Long> transactionsByMonth = new LinkedHashMap<>();
         Map<String, Double> revenueByMonth = new LinkedHashMap<>();
-        
-        
+
         for (int month = 1; month <= 12; month++) {
-            final int currentMonth = month;
             String monthKey = String.format("%d-%02d", year, month);
-            
-            
-            long count = transactions.stream()
-                    .filter(t -> t.getCreatedAt() != null 
-                            && t.getCreatedAt().getYear() == year 
-                            && t.getCreatedAt().getMonthValue() == currentMonth)
-                    .count();
-            
-            
-            double revenue = transactions.stream()
-                    .filter(t -> t.getCreatedAt() != null
-                            && t.getStatus() == TransactionStatus.APPROVED
-                            && t.getCreatedAt().getYear() == year
-                            && t.getCreatedAt().getMonthValue() == currentMonth)
-                    .mapToDouble(Transaction::getTotalPrice)
-                    .sum();
-            
+            TransactionMonthlyStatsProjection stat = statsByMonth.get(month);
+
+            long count = stat != null ? stat.getTransactionCount() : 0L;
+            double revenue = stat != null && stat.getApprovedRevenue() != null
+                    ? stat.getApprovedRevenue().doubleValue()
+                    : 0.0;
+
             transactionsByMonth.put(monthKey, count);
             revenueByMonth.put(monthKey, revenue);
         }
