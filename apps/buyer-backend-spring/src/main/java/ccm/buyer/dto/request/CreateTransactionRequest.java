@@ -1,12 +1,14 @@
 package ccm.buyer.dto.request;
 
 
+import java.math.BigDecimal;
+
 import lombok.Data;
 
 @Data
 public class CreateTransactionRequest {
   private Long buyerId;
   private Long listingId;
-  private Integer qty;
-  private Double amount;
+  private BigDecimal qty;
+  private BigDecimal amount;
 }

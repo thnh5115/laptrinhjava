@@ -3,6 +3,8 @@ package ccm.buyer.entity;
 import ccm.buyer.enums.BidStatus;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,7 +23,8 @@ public class Bid {
   @JoinColumn(name = "buyer_id", nullable = false)
   private Buyer buyer;
 
-  private Double amount;
+  @Column(precision = 19, scale = 4)
+  private BigDecimal amount;
 
   @Enumerated(EnumType.STRING)
   private BidStatus status;

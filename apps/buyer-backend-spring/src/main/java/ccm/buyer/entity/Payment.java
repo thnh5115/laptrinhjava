@@ -3,6 +3,8 @@ package ccm.buyer.entity;
 import ccm.buyer.enums.PayStatus;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -18,7 +20,7 @@ public class Payment {
 
   private String method;
   private String ref; 
-  private Double amount;
+  private BigDecimal amount;
 
   @Enumerated(EnumType.STRING)
   private PayStatus status;

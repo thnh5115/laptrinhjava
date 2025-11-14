@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Service
@@ -33,26 +35,35 @@ public class BuyerServiceImpl implements BuyerService {
 
     @Override
     @Transactional
-    public Transaction directBuy(Long buyerId, Long listingId, Integer qty) {
-        Buyer buyer = buyerRepo.findById(buyerId)
+    public Transaction directBuy(Long buyerId, Long listingId, BigDecimal qty) {
+
+        Buyer buyer = buyerRepo.findByIdAndRole(buyerId, "BUYER")
                 .orElseThrow(() -> new RuntimeException("Buyer not found"));
 
         Listing listing = listingService.validateOpen(listingId);
         listingService.reserve(listingId, qty);
 
-        Double total = (listing.getPrice() != null ? listing.getPrice() : 0.0) * qty;
+        BigDecimal qtyBD = qty;
+
+        BigDecimal price = (listing.getPrice() != null ? listing.getPrice() : BigDecimal.ZERO);
+
+        BigDecimal total = price
+                .multiply(qtyBD)
+                .setScale(4, RoundingMode.HALF_UP);
 
         Transaction tx = Transaction.builder()
                 .buyerId(buyerId)
                 .listingId(listingId)
-                .qty(qty)
+                .qty(qtyBD)
                 .amount(total)
                 .status(TrStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
+
         tx = trRepo.save(tx);
 
         try {
+
             Payment pay = paymentService.processPayment(tx.getId(), "WALLET", total);
 
             if (pay.getStatus() == PayStatus.SUCCESS) {
@@ -60,20 +71,27 @@ public class BuyerServiceImpl implements BuyerService {
                 trRepo.save(tx);
 
                 Invoice inv = invoiceService.issueInvoice(tx.getId());
+
                 notifyService.notifyBuyer(
                         buyerId,
                         "Purchase successful! Invoice #" + inv.getId()
                 );
+
             } else {
                 tx.setStatus(TrStatus.FAILED);
                 trRepo.save(tx);
+
                 listingService.release(listingId, qty);
+
                 notifyService.notifyBuyer(buyerId, "Payment failed.");
             }
+
         } catch (Exception ex) {
             tx.setStatus(TrStatus.FAILED);
             trRepo.save(tx);
+
             listingService.release(listingId, qty);
+
             notifyService.notifyBuyer(buyerId, "Error: " + ex.getMessage());
         }
 

@@ -7,6 +7,7 @@ import ccm.buyer.service.ListingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -20,7 +21,7 @@ public class ListingServiceImpl implements ListingService {
 
     public void lockOrOpen(List<Listing> list) {
         for (Listing l : list) {
-        Integer avail = l.getAvailableQty() == null ? 0 : l.getAvailableQty();
+        BigDecimal avail = l.getAvailableQty() == null ? BigDecimal.ZERO : l.getAvailableQty();
         }
     }
 
@@ -30,12 +31,12 @@ public class ListingServiceImpl implements ListingService {
     }
 
     @Override
-    public void reserve(Long listingId, int qty) {
+    public void reserve(Long listingId, BigDecimal qty) {
         throw new UnsupportedOperationException("implement me");
     }
 
     @Override
-    public void release(Long listingId, int qty) {
+    public void release(Long listingId, BigDecimal qty) {
         throw new UnsupportedOperationException("implement me");
     }
 

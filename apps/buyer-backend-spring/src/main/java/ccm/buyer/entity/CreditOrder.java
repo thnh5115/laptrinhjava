@@ -6,7 +6,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;            
 import lombok.Getter;             
 import lombok.NoArgsConstructor; 
-import lombok.Setter;               
+import lombok.Setter;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -27,10 +29,10 @@ public class CreditOrder {
     private Buyer buyer;
 
     @JoinColumn(nullable = false)
-    private Integer credits; 
+    private BigDecimal credits; 
 
     @JoinColumn(nullable = false)
-    private Double pricePerUnit;
+    private BigDecimal pricePerUnit;
 
     @Enumerated(EnumType.STRING)
     @JoinColumn(nullable = false)

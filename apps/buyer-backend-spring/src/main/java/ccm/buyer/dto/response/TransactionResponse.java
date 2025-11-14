@@ -4,6 +4,7 @@ import ccm.buyer.enums.TrStatus;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data @Builder
@@ -11,8 +12,8 @@ public class TransactionResponse {
   private Long id;
   private Long buyerId;
   private Long listingId;
-  private Integer qty;
-  private Double amount;
+  private BigDecimal qty;
+  private BigDecimal amount;
   private TrStatus status;
   private LocalDateTime createdAt;
 }

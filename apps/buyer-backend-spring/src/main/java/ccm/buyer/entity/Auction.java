@@ -3,6 +3,7 @@ package ccm.buyer.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "auctions")
@@ -17,10 +18,10 @@ public class Auction {
   private Listing listing;
 
   @Column(name = "start_price", nullable = false)
-  private Double startPrice;
+  private BigDecimal startPrice;
 
   @Column(name = "step_price", nullable = false)
-  private Double stepPrice;
+  private BigDecimal stepPrice;
 
   @Column(name = "start_time", nullable = false)
   private LocalDateTime startTime;

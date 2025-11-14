@@ -5,6 +5,7 @@ import ccm.buyer.enums.ListingType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -22,9 +23,9 @@ public class Listing {
   @Enumerated(EnumType.STRING)
   private ListingType type; 
 
-  private Integer quantity; 
-  private Integer availableQty;
-  private Double pricePerUnit; 
+  private BigDecimal qty; 
+  private BigDecimal availableQty;
+  private BigDecimal pricePerUnit; 
 
   @Enumerated(EnumType.STRING)
   private ListingStatus status;
@@ -37,11 +38,11 @@ public class Listing {
     updatedAt = createdAt;
     if(status==null) status = ListingStatus.DRAFT;
     if(type==null) type = ListingType.FIXED_PRICE;
-    if(availableQty==null) availableQty = (quantity!=null?quantity:0);
+    if(availableQty==null) availableQty = (qty!=null? qty:BigDecimal.ZERO);
   }
   @PreUpdate void onUpdate(){ updatedAt = LocalDateTime.now(); }
 
-  public Double getPrice() { return pricePerUnit; }
+  public BigDecimal getPrice() { return pricePerUnit; }
 
-  public Integer getAvailableQty() { return availableQty; }
+  public BigDecimal getAvailableQty() { return availableQty; }
 }

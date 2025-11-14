@@ -3,6 +3,8 @@ package ccm.buyer.entity;
 import ccm.buyer.enums.TrStatus;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -14,9 +16,12 @@ public class Transaction {
   private Long id;
 
   private Long buyerId;
+  
   private Long listingId;
-  private Integer qty;
-  private Double amount;
+
+  private BigDecimal qty;
+
+  private BigDecimal amount;
 
   @Enumerated(EnumType.STRING)
   private TrStatus status;

@@ -1,5 +1,7 @@
 package ccm.buyer.dto.response;
 
+import java.math.BigDecimal;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -8,5 +10,5 @@ public class BuyerDashboardResponse {
   private long totalOrders;
   private long pendingTransactions;
   private long completedTransactions;
-  private double totalSpent;
+  private BigDecimal totalSpent;
 }
