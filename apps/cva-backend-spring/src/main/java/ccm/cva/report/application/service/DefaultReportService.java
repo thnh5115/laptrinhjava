@@ -1,17 +1,18 @@
 package ccm.cva.report.application.service;
 
+import ccm.admin.credit.entity.CarbonCredit;
+import ccm.admin.credit.repository.CarbonCreditRepository;
+import ccm.admin.journey.entity.Journey;
+import ccm.admin.journey.repository.JourneyRepository;
 import ccm.cva.report.application.dto.CarbonAuditReport;
 import ccm.cva.report.application.dto.CreditIssuanceSummary;
 import ccm.cva.shared.exception.ResourceNotFoundException;
-import ccm.cva.verification.domain.VerificationRequest;
-import ccm.cva.issuance.domain.CreditIssuance;
-import ccm.cva.verification.infrastructure.repository.VerificationRequestRepository;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Font;
 import com.lowagie.text.FontFactory;
-import com.lowagie.text.Paragraph;
 import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
@@ -24,43 +25,46 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DefaultReportService implements ReportService {
 
-    private final VerificationRequestRepository verificationRequestRepository;
+    private final JourneyRepository journeyRepository;
+    private final CarbonCreditRepository carbonCreditRepository;
 
-    public DefaultReportService(VerificationRequestRepository verificationRequestRepository) {
-        this.verificationRequestRepository = verificationRequestRepository;
+    public DefaultReportService(JourneyRepository journeyRepository, CarbonCreditRepository carbonCreditRepository) {
+        this.journeyRepository = journeyRepository;
+        this.carbonCreditRepository = carbonCreditRepository;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public CarbonAuditReport buildReport(UUID requestId) {
-        VerificationRequest request = verificationRequestRepository.findById(requestId)
-            .orElseThrow(() -> new ResourceNotFoundException("Verification request %s not found".formatted(requestId)));
+    public CarbonAuditReport buildReport(Long journeyId) {
+        Journey journey = journeyRepository.findById(journeyId)
+            .orElseThrow(() -> new ResourceNotFoundException("Journey %s not found".formatted(journeyId)));
 
-        CreditIssuanceSummary issuanceSummary = Optional.ofNullable(request.getCreditIssuance())
+        CreditIssuanceSummary issuanceSummary = carbonCreditRepository.findByJourneyId(journeyId)
             .map(this::toSummary)
             .orElse(null);
         Instant generatedAt = Instant.now();
-        String signature = generateSignature(request, issuanceSummary, generatedAt);
+        String signature = generateSignature(journey, issuanceSummary, generatedAt);
 
         return new CarbonAuditReport(
-            request.getId(),
-            request.getOwnerId(),
-            request.getTripId(),
-            request.getDistanceKm(),
-            request.getEnergyKwh(),
-            request.getChecksum(),
-            request.getStatus(),
-            request.getCreatedAt(),
-            request.getVerifiedAt(),
-            request.getVerifierId(),
-            request.getNotes(),
+            journey.getId(),
+            journey.getUserId(),
+            journey.getJourneyDate(),
+            journey.getStartLocation(),
+            journey.getEndLocation(),
+            journey.getDistanceKm(),
+            journey.getEnergyUsedKwh(),
+            journey.getCreditsGenerated(),
+            journey.getStatus(),
+            journey.getCreatedAt(),
+            journey.getVerifiedAt(),
+            journey.getVerifiedBy(),
+            journey.getRejectionReason(),
             issuanceSummary,
             signature,
             generatedAt
@@ -84,27 +88,28 @@ public class DefaultReportService implements ReportService {
 
             PdfPTable table = new PdfPTable(2);
             table.setWidthPercentage(100);
-            addRow(table, "Request ID", report.requestId().toString());
-            addRow(table, "Owner ID", report.ownerId().toString());
-            addRow(table, "Trip ID", report.tripId());
-            addRow(table, "Checksum", report.checksum());
+            addRow(table, "Journey ID", String.valueOf(report.journeyId()));
+            addRow(table, "Owner ID", String.valueOf(report.ownerId()));
+            addRow(table, "Journey Date", Optional.ofNullable(report.journeyDate()).map(Object::toString).orElse("-"));
+            addRow(table, "Route", Optional.ofNullable(report.startLocation()).orElse("-") + " -> " + Optional.ofNullable(report.endLocation()).orElse("-"));
             addRow(table, "Status", report.status().name());
-            addRow(table, "Created At", formatInstant(report.createdAt()));
-            addRow(table, "Verified At", formatInstant(report.verifiedAt()));
+            addRow(table, "Created At", formatDateTime(report.createdAt()));
+            addRow(table, "Verified At", formatDateTime(report.verifiedAt()));
             addRow(table, "Verifier ID", report.verifierId() != null ? report.verifierId().toString() : "-");
             addRow(table, "Distance (km)", formatDecimal(report.distanceKm()));
             addRow(table, "Energy (kWh)", formatDecimal(report.energyKwh()));
-            addRow(table, "Notes", Optional.ofNullable(report.notes()).orElse("-"));
+            addRow(table, "Credits Generated", formatDecimal(report.creditsGenerated()));
+            addRow(table, "Rejection Reason", Optional.ofNullable(report.rejectionReason()).orElse("-"));
 
-            CreditIssuanceSummary issuance = report.issuance();
+            CreditIssuanceSummary issuance = report.credit();
             if (issuance != null) {
-                addRow(table, "Issuance ID", issuance.id().toString());
-                addRow(table, "CO2 Reduced (kg)", formatDecimal(issuance.co2ReducedKg()));
-                addRow(table, "Credits Raw", formatDecimal(issuance.creditsRaw()));
-                addRow(table, "Credits Rounded", formatDecimal(issuance.creditsRounded()));
-                addRow(table, "Idempotency Key", issuance.idempotencyKey());
-                addRow(table, "Correlation ID", Optional.ofNullable(issuance.correlationId()).orElse("-"));
-                addRow(table, "Issuance Created", formatInstant(issuance.createdAt()));
+                addRow(table, "Credit ID", issuance.id().toString());
+                addRow(table, "Amount", formatDecimal(issuance.amount()));
+                addRow(table, "Status", issuance.status().name());
+                addRow(table, "Price", formatDecimal(issuance.pricePerCredit()));
+                addRow(table, "Listed At", formatDateTime(issuance.listedAt()));
+                addRow(table, "Sold At", formatDateTime(issuance.soldAt()));
+                addRow(table, "Created At", formatDateTime(issuance.createdAt()));
             }
 
             document.add(table);
@@ -115,31 +120,36 @@ public class DefaultReportService implements ReportService {
         }
     }
 
-    private CreditIssuanceSummary toSummary(CreditIssuance issuance) {
+    private CreditIssuanceSummary toSummary(CarbonCredit credit) {
         return new CreditIssuanceSummary(
-            issuance.getId(),
-            issuance.getCo2ReducedKg(),
-            issuance.getCreditsRaw(),
-            issuance.getCreditsRounded(),
-            issuance.getIdempotencyKey(),
-            issuance.getCorrelationId(),
-            issuance.getCreatedAt()
+            credit.getId(),
+            credit.getAmount(),
+            credit.getStatus(),
+            credit.getPricePerCredit(),
+            credit.getListedAt(),
+            credit.getSoldAt(),
+            credit.getCreatedAt()
         );
     }
 
-    private String generateSignature(VerificationRequest request, CreditIssuanceSummary issuance, Instant generatedAt) {
+    private String generateSignature(Journey journey, CreditIssuanceSummary issuance, Instant generatedAt) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            digest.update(request.getId().toString().getBytes(StandardCharsets.UTF_8));
-            digest.update(request.getChecksum().getBytes(StandardCharsets.UTF_8));
-            digest.update(request.getStatus().name().getBytes(StandardCharsets.UTF_8));
-            digest.update(request.getCreatedAt().toString().getBytes(StandardCharsets.UTF_8));
-            if (request.getVerifiedAt() != null) {
-                digest.update(request.getVerifiedAt().toString().getBytes(StandardCharsets.UTF_8));
+            digest.update(String.valueOf(journey.getId()).getBytes(StandardCharsets.UTF_8));
+            digest.update(String.valueOf(journey.getUserId()).getBytes(StandardCharsets.UTF_8));
+            digest.update(journey.getStatus().name().getBytes(StandardCharsets.UTF_8));
+            if (journey.getCreditsGenerated() != null) {
+                digest.update(journey.getCreditsGenerated().toPlainString().getBytes(StandardCharsets.UTF_8));
+            }
+            if (journey.getCreatedAt() != null) {
+                digest.update(journey.getCreatedAt().toString().getBytes(StandardCharsets.UTF_8));
+            }
+            if (journey.getVerifiedAt() != null) {
+                digest.update(journey.getVerifiedAt().toString().getBytes(StandardCharsets.UTF_8));
             }
             if (issuance != null) {
                 digest.update(issuance.id().toString().getBytes(StandardCharsets.UTF_8));
-                digest.update(issuance.creditsRounded().toPlainString().getBytes(StandardCharsets.UTF_8));
+                digest.update(issuance.amount().toPlainString().getBytes(StandardCharsets.UTF_8));
             }
             digest.update(generatedAt.toString().getBytes(StandardCharsets.UTF_8));
             byte[] hash = digest.digest();
@@ -163,7 +173,7 @@ public class DefaultReportService implements ReportService {
         return value != null ? value.stripTrailingZeros().toPlainString() : "-";
     }
 
-    private String formatInstant(Instant instant) {
-        return instant != null ? instant.toString() : "-";
+    private String formatDateTime(java.time.LocalDateTime dateTime) {
+        return dateTime != null ? dateTime.toString() : "-";
     }
 }

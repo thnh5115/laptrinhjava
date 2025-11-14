@@ -1,20 +1,17 @@
 package ccm.cva.analytics.application.service;
 
+import ccm.admin.journey.entity.Journey;
+import ccm.admin.journey.entity.enums.JourneyStatus;
+import ccm.admin.journey.repository.JourneyRepository;
 import ccm.cva.analytics.application.dto.AnalyticsOverviewResponse;
 import ccm.cva.analytics.application.dto.AnalyticsSeriesResponse;
 import ccm.cva.analytics.application.dto.AnalyticsSummaryResponse;
 import ccm.cva.analytics.application.dto.DailyRequestMetric;
-import ccm.cva.issuance.domain.CreditIssuance;
-import ccm.cva.issuance.infrastructure.repository.CreditIssuanceRepository;
-import ccm.cva.verification.domain.VerificationRequest;
-import ccm.cva.verification.domain.VerificationStatus;
-import ccm.cva.verification.infrastructure.repository.VerificationRequestRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,28 +26,23 @@ public class AnalyticsService {
 
     private static final ZoneId UTC = ZoneId.of("UTC");
 
-    private final VerificationRequestRepository requestRepository;
-    private final CreditIssuanceRepository issuanceRepository;
+    private final JourneyRepository journeyRepository;
 
-    public AnalyticsService(
-            VerificationRequestRepository requestRepository,
-            CreditIssuanceRepository issuanceRepository
-    ) {
-        this.requestRepository = requestRepository;
-        this.issuanceRepository = issuanceRepository;
+    public AnalyticsService(JourneyRepository journeyRepository) {
+        this.journeyRepository = journeyRepository;
     }
 
     @Transactional(readOnly = true)
     public AnalyticsSummaryResponse getSummary() {
-        long total = requestRepository.count();
-        long pending = requestRepository.countByStatus(VerificationStatus.PENDING);
-        long approved = requestRepository.countByStatus(VerificationStatus.APPROVED);
-        long rejected = requestRepository.countByStatus(VerificationStatus.REJECTED);
+        long total = journeyRepository.count();
+        long pending = journeyRepository.countByStatus(JourneyStatus.PENDING);
+        long approved = journeyRepository.countByStatus(JourneyStatus.VERIFIED);
+        long rejected = journeyRepository.countByStatus(JourneyStatus.REJECTED);
 
         double approvalRate = total > 0 ? roundRatio((double) approved / total) : 0.0;
         double rejectionRate = total > 0 ? roundRatio((double) rejected / total) : 0.0;
 
-        BigDecimal totalCreditsIssued = Optional.ofNullable(issuanceRepository.sumCreditsRounded())
+        BigDecimal totalCreditsIssued = Optional.ofNullable(journeyRepository.calculateTotalCreditsGenerated())
             .orElse(BigDecimal.ZERO)
             .setScale(2, RoundingMode.HALF_EVEN);
 
@@ -75,18 +67,19 @@ public class AnalyticsService {
         }
 
         Map<LocalDate, MutableMetric> metricsByDay = initialiseTimeline(sanitizedFrom, sanitizedTo);
-        Instant windowStart = sanitizedFrom.atStartOfDay(UTC).toInstant();
-        Instant windowEndInclusive = sanitizedTo.plusDays(1).atStartOfDay(UTC).toInstant().minusNanos(1);
+        LocalDateTime windowStart = sanitizedFrom.atStartOfDay();
+        LocalDateTime windowEndInclusive = sanitizedTo.plusDays(1).atStartOfDay().minusNanos(1);
 
-        List<VerificationRequest> createdWithinWindow = requestRepository
+        List<Journey> createdWithinWindow = journeyRepository
             .findAllByCreatedAtBetweenOrderByCreatedAtAsc(windowStart, windowEndInclusive);
-        List<VerificationRequest> decidedWithinWindow = requestRepository
+        List<Journey> decidedWithinWindow = journeyRepository
             .findAllByVerifiedAtBetweenOrderByVerifiedAtAsc(windowStart, windowEndInclusive);
-        List<CreditIssuance> issuancesWithinWindow = issuanceRepository
-            .findAllByCreatedAtBetweenOrderByCreatedAtAsc(windowStart, windowEndInclusive);
 
-        for (VerificationRequest request : createdWithinWindow) {
-            LocalDate submissionDay = toDay(request.getCreatedAt());
+        for (Journey request : createdWithinWindow) {
+            if (request.getCreatedAt() == null) {
+                continue;
+            }
+            LocalDate submissionDay = request.getCreatedAt().toLocalDate();
             MutableMetric metric = metricsByDay.get(submissionDay);
             if (metric == null) {
                 continue;
@@ -94,31 +87,35 @@ public class AnalyticsService {
             metric.submissions++;
         }
 
-        for (VerificationRequest request : decidedWithinWindow) {
+        for (Journey request : decidedWithinWindow) {
             if (request.getVerifiedAt() == null) {
                 continue;
             }
-            LocalDate decisionDay = toDay(request.getVerifiedAt());
+            LocalDate decisionDay = request.getVerifiedAt().toLocalDate();
             MutableMetric metric = metricsByDay.get(decisionDay);
             if (metric == null) {
                 continue;
             }
-            if (request.getStatus() == VerificationStatus.APPROVED) {
+            if (request.getStatus() == JourneyStatus.VERIFIED) {
                 metric.approvals++;
-            } else if (request.getStatus() == VerificationStatus.REJECTED) {
+            } else if (request.getStatus() == JourneyStatus.REJECTED) {
                 metric.rejections++;
             }
         }
 
         BigDecimal creditsInWindow = BigDecimal.ZERO;
-        for (CreditIssuance issuance : issuancesWithinWindow) {
-            LocalDate issuanceDay = toDay(issuance.getCreatedAt());
-            MutableMetric metric = metricsByDay.get(issuanceDay);
+        for (Journey request : decidedWithinWindow) {
+            if (request.getVerifiedAt() == null || request.getStatus() != JourneyStatus.VERIFIED) {
+                continue;
+            }
+            LocalDate decisionDay = request.getVerifiedAt().toLocalDate();
+            MutableMetric metric = metricsByDay.get(decisionDay);
             if (metric == null) {
                 continue;
             }
-            metric.creditsIssued = metric.creditsIssued.add(issuance.getCreditsRounded());
-            creditsInWindow = creditsInWindow.add(issuance.getCreditsRounded());
+            BigDecimal credits = Optional.ofNullable(request.getCreditsGenerated()).orElse(BigDecimal.ZERO);
+            metric.creditsIssued = metric.creditsIssued.add(credits);
+            creditsInWindow = creditsInWindow.add(credits);
         }
 
         List<DailyRequestMetric> timeline = metricsByDay.entrySet().stream()
@@ -174,10 +171,6 @@ public class AnalyticsService {
             cursor = cursor.plusDays(1);
         }
         return metrics;
-    }
-
-    private LocalDate toDay(Instant instant) {
-        return instant.atZone(UTC).toLocalDate();
     }
 
     private double roundRatio(double ratio) {

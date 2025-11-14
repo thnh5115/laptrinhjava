@@ -5,6 +5,7 @@ import ccm.cva.audit.client.AuditLogClient;
 import ccm.cva.audit.client.HttpAuditLogClient;
 import ccm.cva.shared.trace.CorrelationIdFilter;
 import ccm.cva.shared.trace.CorrelationIdHolder;
+import ccm.cva.wallet.client.NoopWalletClient;
 import ccm.cva.wallet.client.WalletClient;
 import ccm.cva.wallet.client.WalletClientProperties;
 import ccm.cva.wallet.client.WalletHttpClient;
@@ -19,28 +20,8 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
-@EnableConfigurationProperties({WalletClientProperties.class, AuditClientProperties.class})
+@EnableConfigurationProperties({AuditClientProperties.class, WalletClientProperties.class})
 public class IntegrationConfig {
-
-    @Bean
-    @ConditionalOnProperty(prefix = "app.wallet", name = "base-url")
-    public WalletClient walletHttpClient(RestTemplateBuilder builder, WalletClientProperties properties) {
-        RestTemplate restTemplate = builder
-            .requestFactory(SimpleClientHttpRequestFactory::new)
-            .additionalInterceptors((request, body, execution) -> {
-                CorrelationIdHolder.get().ifPresent(id -> request.getHeaders().add(CorrelationIdFilter.HEADER_NAME, id));
-                return execution.execute(request, body);
-            })
-            .build();
-        restTemplate.setRequestFactory(requestFactory(properties.getConnectTimeout(), properties.getReadTimeout()));
-        return new WalletHttpClient(restTemplate, properties);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(WalletClient.class)
-    public WalletClient noopWalletClient() {
-        return new ccm.cva.wallet.client.NoopWalletClient();
-    }
 
     @Bean
     @ConditionalOnProperty(prefix = "app.audit", name = "base-url")
@@ -60,6 +41,26 @@ public class IntegrationConfig {
     @ConditionalOnMissingBean(AuditLogClient.class)
     public AuditLogClient loggingAuditLogClient() {
         return new ccm.cva.audit.client.LoggingAuditLogClient();
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "app.wallet", name = "base-url")
+    public WalletClient httpWalletClient(RestTemplateBuilder builder, WalletClientProperties properties) {
+        RestTemplate restTemplate = builder
+            .requestFactory(SimpleClientHttpRequestFactory::new)
+            .additionalInterceptors((request, body, execution) -> {
+                CorrelationIdHolder.get().ifPresent(id -> request.getHeaders().add(CorrelationIdFilter.HEADER_NAME, id));
+                return execution.execute(request, body);
+            })
+            .build();
+        restTemplate.setRequestFactory(requestFactory(properties.getConnectTimeout(), properties.getReadTimeout()));
+        return new WalletHttpClient(restTemplate, properties);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(WalletClient.class)
+    public WalletClient noopWalletClient() {
+        return new NoopWalletClient();
     }
 
     private ClientHttpRequestFactory requestFactory(java.time.Duration connectTimeout, java.time.Duration readTimeout) {

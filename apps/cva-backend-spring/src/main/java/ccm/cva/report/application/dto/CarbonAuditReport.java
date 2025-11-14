@@ -1,23 +1,26 @@
 package ccm.cva.report.application.dto;
 
-import ccm.cva.verification.domain.VerificationStatus;
+import ccm.admin.journey.entity.enums.JourneyStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record CarbonAuditReport(
-        UUID requestId,
-        UUID ownerId,
-        String tripId,
+        Long journeyId,
+        Long ownerId,
+        LocalDate journeyDate,
+        String startLocation,
+        String endLocation,
         BigDecimal distanceKm,
         BigDecimal energyKwh,
-        String checksum,
-        VerificationStatus status,
-        Instant createdAt,
-        Instant verifiedAt,
-        UUID verifierId,
-        String notes,
-        CreditIssuanceSummary issuance,
+        BigDecimal creditsGenerated,
+        JourneyStatus status,
+        LocalDateTime createdAt,
+        LocalDateTime verifiedAt,
+        Long verifierId,
+        String rejectionReason,
+        CreditIssuanceSummary credit,
         String signature,
         Instant generatedAt
 ) {}

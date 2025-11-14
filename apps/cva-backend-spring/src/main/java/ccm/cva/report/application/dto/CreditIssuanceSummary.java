@@ -1,15 +1,15 @@
 package ccm.cva.report.application.dto;
 
+import ccm.admin.credit.entity.enums.CreditStatus;
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
+import java.time.LocalDateTime;
 
 public record CreditIssuanceSummary(
-        UUID id,
-        BigDecimal co2ReducedKg,
-        BigDecimal creditsRaw,
-        BigDecimal creditsRounded,
-        String idempotencyKey,
-        String correlationId,
-        Instant createdAt
+        Long id,
+        BigDecimal amount,
+        CreditStatus status,
+        BigDecimal pricePerCredit,
+        LocalDateTime listedAt,
+        LocalDateTime soldAt,
+        LocalDateTime createdAt
 ) {}

@@ -7,7 +7,6 @@ import ccm.cva.report.application.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,8 +30,8 @@ public class ReportController {
     @Operation(summary = "Generate carbon audit report")
     @GetMapping("/{id}")
     @RateLimited("report")
-    public ResponseEntity<?> generateReport(
-            @PathVariable UUID id,
+        public ResponseEntity<?> generateReport(
+            @PathVariable Long id,
             @Parameter(description = "Output format (json or pdf)")
             @RequestParam(name = "format", required = false, defaultValue = "json") String format
     ) {
@@ -41,7 +40,7 @@ public class ReportController {
 
         if (reportFormat == ReportFormat.PDF) {
             byte[] pdf = reportService.renderPdf(report);
-            String filename = "cva-report-" + report.requestId() + ".pdf";
+            String filename = "cva-report-" + report.journeyId() + ".pdf";
             return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)

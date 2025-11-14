@@ -2,20 +2,18 @@ package ccm.cva.analytics.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import ccm.admin.journey.entity.Journey;
+import ccm.admin.journey.entity.enums.JourneyStatus;
+import ccm.admin.journey.repository.JourneyRepository;
 import ccm.cva.analytics.application.dto.AnalyticsSeriesResponse;
 import ccm.cva.analytics.application.dto.AnalyticsSummaryResponse;
 import ccm.cva.analytics.application.dto.DailyRequestMetric;
-import ccm.cva.issuance.domain.CreditIssuance;
-import ccm.cva.issuance.infrastructure.repository.CreditIssuanceRepository;
-import ccm.cva.verification.domain.VerificationRequest;
-import ccm.cva.verification.domain.VerificationStatus;
-import ccm.cva.verification.infrastructure.repository.VerificationRequestRepository;
-import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,25 +25,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class AnalyticsServiceTest {
 
-    @Mock
-    private VerificationRequestRepository requestRepository;
-
-    @Mock
+    private JourneyRepository journeyRepository;
     private CreditIssuanceRepository issuanceRepository;
 
     private AnalyticsService analyticsService;
 
     @BeforeEach
-    void setUp() {
+        analyticsService = new AnalyticsService(journeyRepository);
         analyticsService = new AnalyticsService(requestRepository, issuanceRepository);
     }
 
     @Test
-    void getSummaryAggregatesCounters() {
-        when(requestRepository.count()).thenReturn(10L);
-        when(requestRepository.countByStatus(VerificationStatus.PENDING)).thenReturn(3L);
-        when(requestRepository.countByStatus(VerificationStatus.APPROVED)).thenReturn(6L);
-        when(requestRepository.countByStatus(VerificationStatus.REJECTED)).thenReturn(1L);
+        when(journeyRepository.count()).thenReturn(10L);
+        when(journeyRepository.countByStatus(JourneyStatus.PENDING)).thenReturn(3L);
+        when(journeyRepository.countByStatus(JourneyStatus.VERIFIED)).thenReturn(6L);
+        when(journeyRepository.countByStatus(JourneyStatus.REJECTED)).thenReturn(1L);
+        when(journeyRepository.calculateTotalCreditsGenerated()).thenReturn(new BigDecimal("42.780"));
         when(issuanceRepository.sumCreditsRounded()).thenReturn(new BigDecimal("42.780"));
 
         AnalyticsSummaryResponse summary = analyticsService.getSummary();
@@ -63,39 +58,53 @@ class AnalyticsServiceTest {
     void getSeriesBuildsDailyTimeline() {
         LocalDate from = LocalDate.of(2025, 11, 1);
         LocalDate to = LocalDate.of(2025, 11, 3);
-        Instant day1 = from.atStartOfDay().toInstant(ZoneOffset.UTC);
-        Instant day2 = from.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC).plusSeconds(3600);
-        Instant day3 = from.plusDays(2).atStartOfDay().toInstant(ZoneOffset.UTC).plusSeconds(7200);
+        LocalDateTime day1 = from.atStartOfDay();
+        LocalDateTime day2 = from.plusDays(1).atStartOfDay().plusHours(1);
+        LocalDateTime day3 = from.plusDays(2).atStartOfDay().plusHours(2);
 
-        VerificationRequest submittedDay1 = new VerificationRequest();
-        submittedDay1.setId(UUID.randomUUID());
-        submittedDay1.setCreatedAt(day1);
-        submittedDay1.setStatus(VerificationStatus.PENDING);
+        Journey submittedDay1 = Journey.builder()
+            .id(1L)
+            .userId(101L)
+            .journeyDate(from)
+            .startLocation("City A")
+            .endLocation("City B")
+            .distanceKm(new BigDecimal("100.0"))
+            .energyUsedKwh(new BigDecimal("30.0"))
+            .status(JourneyStatus.PENDING)
+            .createdAt(day1)
+            .build();
 
-        VerificationRequest approvedDay2 = new VerificationRequest();
-        approvedDay2.setId(UUID.randomUUID());
-        approvedDay2.setCreatedAt(day1);
-        approvedDay2.setVerifiedAt(day2);
-        approvedDay2.setStatus(VerificationStatus.APPROVED);
+        Journey approvedDay2 = Journey.builder()
+            .id(2L)
+            .userId(102L)
+            .journeyDate(from)
+            .startLocation("City A")
+            .endLocation("City C")
+            .distanceKm(new BigDecimal("120.0"))
+            .energyUsedKwh(new BigDecimal("35.0"))
+            .status(JourneyStatus.VERIFIED)
+            .createdAt(day1)
+            .verifiedAt(day2)
+            .creditsGenerated(new BigDecimal("12.34"))
+            .build();
 
-        VerificationRequest rejectedDay3 = new VerificationRequest();
-        rejectedDay3.setId(UUID.randomUUID());
-        rejectedDay3.setCreatedAt(day2);
-        rejectedDay3.setVerifiedAt(day3);
-        rejectedDay3.setStatus(VerificationStatus.REJECTED);
+        Journey rejectedDay3 = Journey.builder()
+            .id(3L)
+            .userId(103L)
+            .journeyDate(from.plusDays(1))
+            .startLocation("City D")
+            .endLocation("City E")
+            .distanceKm(new BigDecimal("90.0"))
+            .energyUsedKwh(new BigDecimal("28.0"))
+            .status(JourneyStatus.REJECTED)
+            .createdAt(day2)
+            .verifiedAt(day3)
+            .build();
 
-        CreditIssuance issuance = new CreditIssuance();
-        issuance.setId(UUID.randomUUID());
-        issuance.setCreatedAt(day2);
-        issuance.setCreditsRounded(new BigDecimal("12.34"));
-
-        when(requestRepository.findAllByCreatedAtBetweenOrderByCreatedAtAsc(any(), any()))
+        when(journeyRepository.findAllByCreatedAtBetweenOrderByCreatedAtAsc(any(), any()))
             .thenReturn(List.of(submittedDay1, approvedDay2, rejectedDay3));
-        when(requestRepository.findAllByVerifiedAtBetweenOrderByVerifiedAtAsc(any(), any()))
+        when(journeyRepository.findAllByVerifiedAtBetweenOrderByVerifiedAtAsc(any(), any()))
             .thenReturn(List.of(approvedDay2, rejectedDay3));
-        when(issuanceRepository.findAllByCreatedAtBetweenOrderByCreatedAtAsc(any(), any()))
-            .thenReturn(List.of(issuance));
-        when(issuanceRepository.sumCreditsRounded()).thenReturn(BigDecimal.ZERO);
 
         AnalyticsSeriesResponse series = analyticsService.getSeries(from, to);
 
