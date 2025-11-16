@@ -15,15 +15,19 @@ import java.util.List;
 @RequestMapping("/api/admin/user-management")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+/** User - REST Controller - Admin endpoints for User management */
+
 public class UserController {
 
     private final UserService userService;
 
+    /** GET /api/admin/user-management - perform operation */
     @GetMapping
     public List<UserResponse> all() {
         return userService.findAll();
     }
 
+    /** POST /api/admin/user-management - create new record */
     @PostMapping
     public ResponseEntity<UserResponse> create(@Valid @RequestBody CreateUserRequest req) {
         var created = userService.create(req);
@@ -31,12 +35,12 @@ public class UserController {
     }
 
     @PutMapping("/{id}/suspend")
-    public UserResponse suspend(@PathVariable Long id) {
+    public UserResponse suspend(@PathVariable("id") Long id) {
         return userService.suspend(id);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
         userService.delete(id);
         return ResponseEntity.noContent().build();
     }

@@ -1,5 +1,6 @@
 package ccm.admin.listing.controller;
 
+import ccm.admin.listing.dto.request.ListingModerationRequest;
 import ccm.common.dto.paging.PageResponse;
 import ccm.admin.listing.dto.request.ListingFilterRequest;
 import ccm.admin.listing.dto.request.ListingStatusUpdateRequest;
@@ -12,31 +13,22 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * REST Controller for Admin Listing Management
- * Endpoints for viewing, filtering, and approving/rejecting listings
- */
 @RestController
 @RequestMapping("/api/admin/listings")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
+/**
+ * Listing - REST Controller - Admin endpoints for Listing management
+ */
+
 public class ListingAdminController {
 
     private final ListingAdminService listingService;
 
-    /**
-     * GET /api/admin/listings
-     * Get all listings with filtering and pagination
-     * 
-     * Query params:
-     * - page: page number (default 0)
-     * - size: page size (default 20, max 200)
-     * - sort: sort field,direction (e.g. createdAt,desc)
-     * - keyword: search in title
-     * - status: filter by status (PENDING, APPROVED, REJECTED)
-     * - ownerEmail: filter by owner email
-     */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PageResponse<ListingSummaryResponse>> getAllListings(
@@ -47,70 +39,125 @@ public class ListingAdminController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String ownerEmail
     ) {
-        // Build filter request
+
         ListingFilterRequest filterRequest = new ListingFilterRequest();
         filterRequest.setKeyword(keyword);
         filterRequest.setStatus(status);
         filterRequest.setOwnerEmail(ownerEmail);
-        
-        // Build pageable
+
         int p = Math.max(0, page);
         int s = Math.min(Math.max(1, size), 200);
         Sort sortSpec = parseSort(sort);
         Pageable pageable = PageRequest.of(p, s, sortSpec);
-        
-        // Query
+
         PageResponse<ListingSummaryResponse> response = listingService.getAllListings(filterRequest, pageable);
-        
+
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * GET /api/admin/listings/{id}
-     * Get listing details by ID
-     */
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ListingSummaryResponse> getListingById(@PathVariable Long id) {
+    public ResponseEntity<ListingSummaryResponse> getListingById(@PathVariable("id") Long id) {
         ListingSummaryResponse response = listingService.getListingById(id);
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * PUT /api/admin/listings/{id}/status
-     * Update listing status (approve/reject)
-     * 
-     * Request body: {"status": "APPROVED"} or {"status": "REJECTED"}
-     */
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ListingSummaryResponse> updateListingStatus(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody ListingStatusUpdateRequest request
     ) {
         if (request.getStatus() == null || request.getStatus().trim().isEmpty()) {
             throw new IllegalArgumentException("Status is required");
         }
-        
+
         ListingSummaryResponse response = listingService.updateListingStatus(id, request.getStatus());
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Parse sort parameter
-     * Format: field,direction (e.g. createdAt,desc)
+     * Approve a listing PUT /api/admin/listings/{id}/approve
      */
+    @PutMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ListingSummaryResponse> approveListing(
+            @PathVariable("id") Long id,
+            Authentication authentication
+    ) {
+        Long adminId = resolveAdminId(authentication);
+
+        ListingSummaryResponse response = listingService.approveListing(id, adminId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Reject a listing PUT /api/admin/listings/{id}/reject Body: { "reason":
+     * "Inappropriate content" }
+     */
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ListingSummaryResponse> rejectListing(
+            @PathVariable("id") Long id,
+            Authentication authentication,
+            @RequestBody(required = false) ListingModerationRequest request
+    ) {
+        Long adminId = resolveAdminId(authentication);
+
+        ListingSummaryResponse response = listingService.rejectListing(id, adminId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Delist (remove from marketplace) PUT /api/admin/listings/{id}/delist
+     * Body: { "reason": "Violates marketplace policy" }
+     */
+    @PutMapping("/{id}/delist")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ListingSummaryResponse> delistListing(
+            @PathVariable("id") Long id,
+            Authentication authentication,
+            @RequestBody(required = false) ListingModerationRequest request
+    ) {
+        Long adminId = resolveAdminId(authentication);
+
+        ListingSummaryResponse response = listingService.delistListing(id, adminId, request);
+        return ResponseEntity.ok(response);
+    }
+
     private Sort parseSort(String sort) {
         if (sort == null || sort.trim().isEmpty()) {
             return Sort.by(Sort.Direction.DESC, "createdAt");
         }
-        
+
         String[] parts = sort.split(",");
         String field = parts[0].trim();
         Sort.Direction direction = parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
-        
+
         return Sort.by(direction, field);
+    }
+
+    private Long resolveAdminId(Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetails userDetails) {
+            return parseUserId(userDetails.getUsername());
+        }
+        return parseUserId(authentication.getName());
+    }
+
+    private Long parseUserId(String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 }

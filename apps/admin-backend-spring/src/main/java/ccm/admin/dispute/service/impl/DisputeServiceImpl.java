@@ -8,6 +8,7 @@ import ccm.admin.dispute.entity.Dispute;
 import ccm.admin.dispute.repository.DisputeRepository;
 import ccm.admin.dispute.service.DisputeService;
 import ccm.admin.dispute.spec.DisputeSpecification;
+import ccm.common.util.SortUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,46 +23,42 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Implementation of DisputeService
- * Handles all business logic for dispute management
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
+/** Dispute - Service Implementation - Business logic for Dispute operations */
+
 public class DisputeServiceImpl implements DisputeService {
 
     private final DisputeRepository disputeRepository;
 
+    /** Get all records - transactional */
     @Override
     @Transactional(readOnly = true)
     public PageResponse<DisputeSummaryResponse> getAllDisputes(
             int page,
             int size,
-            String sortBy,
-            String direction,
+            String sort,
             String keyword,
             String status
     ) {
-        log.info("Fetching disputes - page: {}, size: {}, sortBy: {}, direction: {}, keyword: {}, status: {}",
-                page, size, sortBy, direction, keyword, status);
+        log.info("Fetching disputes - page: {}, size: {}, sort: {}, keyword: {}, status: {}",
+                page, size, sort, keyword, status);
 
-        // Create pageable with sorting
-        Sort sort = direction.equalsIgnoreCase("desc")
-                ? Sort.by(sortBy).descending()
-                : Sort.by(sortBy).ascending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        
+        Sort sortSpec = SortUtils.parseSort(sort);
+        Pageable pageable = PageRequest.of(page, size, sortSpec);
 
-        // Apply filters using Specification
+        
         Specification<Dispute> spec = DisputeSpecification.filter(keyword, status);
         Page<Dispute> disputePage = disputeRepository.findAll(spec, pageable);
 
-        // Map to summary DTOs
+        
         List<DisputeSummaryResponse> content = disputePage.getContent().stream()
                 .map(dispute -> DisputeSummaryResponse.builder()
                         .id(dispute.getId())
                         .disputeCode(dispute.getDisputeCode())
-                        .raisedBy(dispute.getRaisedBy())
+                        .raisedBy(resolveRaisedBy(dispute))
                         .status(dispute.getStatus().name())
                         .transactionId(dispute.getTransactionId())
                         .createdAt(dispute.getCreatedAt())
@@ -78,10 +75,11 @@ public class DisputeServiceImpl implements DisputeService {
                 disputePage.getTotalPages(),
                 disputePage.isFirst(),
                 disputePage.isLast(),
-                sortBy + "," + direction
+                sort  
         );
     }
 
+    /** Process business logic - transactional */
     @Override
     @Transactional(readOnly = true)
     public DisputeDetailResponse getDisputeById(Long id) {
@@ -93,7 +91,7 @@ public class DisputeServiceImpl implements DisputeService {
         DisputeDetailResponse response = DisputeDetailResponse.builder()
                 .id(dispute.getId())
                 .disputeCode(dispute.getDisputeCode())
-                .raisedBy(dispute.getRaisedBy())
+                .raisedBy(resolveRaisedBy(dispute))
                 .description(dispute.getDescription())
                 .adminNote(dispute.getAdminNote())
                 .status(dispute.getStatus().name())
@@ -108,13 +106,18 @@ public class DisputeServiceImpl implements DisputeService {
 
     @Override
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = {
+        "analytics:kpis",
+        "analytics:disputes"
+    }, allEntries = true)
+    /** Update status - modifies data */
     public void updateStatus(Long id, UpdateDisputeStatusRequest request) {
         log.info("Updating dispute status for ID: {} to {}", id, request.getStatus());
 
         Dispute dispute = disputeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Dispute not found with ID: " + id));
 
-        // Update status and admin note
+        
         dispute.setStatus(request.getStatus());
         dispute.setAdminNote(request.getAdminNote());
         dispute.setUpdatedAt(LocalDateTime.now());
@@ -122,5 +125,9 @@ public class DisputeServiceImpl implements DisputeService {
         disputeRepository.save(dispute);
 
         log.info("Dispute {} status updated to {} by admin", dispute.getDisputeCode(), request.getStatus());
+    }
+
+    private String resolveRaisedBy(Dispute dispute) {
+        return dispute.getRaisedByUser() != null ? dispute.getRaisedByUser().getEmail() : null;
     }
 }

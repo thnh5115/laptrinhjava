@@ -1,0 +1,9 @@
+{
+  "journeyDate": "2025-11-14",
+  "startLocation": "Ho Chi Minh City, District 1",
+  "endLocation": "Binh Duong Province, Thu Dau Mot City",
+  "distanceKm": 35.5,
+  "energyUsedKwh": 8.2,
+  "vehicleId": "VN-HCM-12345",
+  "notes": "Morning commute to work, highway route"
+}

@@ -126,6 +126,7 @@ public class SecurityConfig {
                     "/actuator/health",
                     "/actuator/info",
                     "/api/auth/**",
+                    "/auth/**",
                     "/api/test/**",
                     "/api/ping",              // PR-7: Public ping endpoint
                     "/error",

@@ -1,12 +1,14 @@
+version: "3.9"
+
 services:
-  # MySQL Database
   mysql:
     image: mysql:8.0
-    container_name: ccm-mysql-admin
+    container_name: ccm-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ccm}
+      MYSQL_ROOT_HOST: "%"
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
@@ -14,12 +16,11 @@ services:
     networks:
       - ccm-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-123456}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # phpMyAdmin
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
     container_name: ccm-phpmyadmin
@@ -27,15 +28,16 @@ services:
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: 123456
+      UPLOAD_LIMIT: 300M
+      MEMORY_LIMIT: 512M
+      MAX_EXECUTION_TIME: 600
     ports:
-      - "${PHPMYADMIN_PORT:-8081}:80"
-    depends_on:
-      mysql:
-        condition: service_healthy
+      - "${PHPMYADMIN_PORT:-8090}:80"
     networks:
       - ccm-network
 
-  # Admin Backend - Spring Boot
   admin-backend:
     build:
       context: ../..
@@ -43,13 +45,15 @@ services:
     container_name: ccm-admin-backend
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
+        SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+        DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+        DB_USERNAME: ${MYSQL_USER:-root}
+        DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+        SERVER_PORT: ${ADMIN_BACKEND_SERVER_PORT:-8080}
+        JWT_SECRET: ${JWT_SECRET:-my-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256}
+        JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
+        JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
+        FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
     ports:
       - "${ADMIN_BACKEND_PORT:-8080}:8080"
     depends_on:
@@ -57,12 +61,135 @@ services:
         condition: service_healthy
     networks:
       - ccm-network
+    volumes:
+      - ~/.m2:/root/.m2
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health", "||", "exit", "1"]
       interval: 30s
-      timeout: 3s
-      start_period: 60s
+      timeout: 10s
+      start_period: 120s
       retries: 3
+
+  buyer-backend:
+    build:
+      context: ../..
+      dockerfile: apps/buyer-backend-spring/Dockerfile
+    container_name: ccm-buyer-backend
+    restart: unless-stopped
+    environment:
+        SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+        SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+        SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+        SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+        SERVER_PORT: ${BUYER_BACKEND_SERVER_PORT:-8081}
+        CORS_ALLOWED_ORIGINS: ${FRONTEND_ORIGIN:-http://localhost:3000}
+    ports:
+      - "${BUYER_BACKEND_PORT:-8081}:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      admin-backend:
+        condition: service_started
+    networks:
+      - ccm-network
+    volumes:
+      - ~/.m2:/root/.m2
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+
+  owner-backend:
+    build:
+      context: ../..
+      dockerfile: apps/owner-backend-spring/Dockerfile
+    container_name: ccm-owner-backend
+    restart: unless-stopped
+    environment:
+        SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+        SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+        SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+        SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+        SERVER_PORT: ${OWNER_BACKEND_SERVER_PORT:-8082}
+    ports:
+      - "${OWNER_BACKEND_PORT:-8082}:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      admin-backend:
+        condition: service_started
+    networks:
+      - ccm-network
+    volumes:
+      - ~/.m2:/root/.m2
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/actuator/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+
+  cva-backend:
+    build:
+      context: ../..
+      dockerfile: apps/cva-backend-spring/Dockerfile
+    container_name: ccm-cva-backend
+    restart: unless-stopped
+    environment:
+        SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+        DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+        DB_USERNAME: ${MYSQL_USER:-root}
+        DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+        SERVER_PORT: ${CVA_BACKEND_SERVER_PORT:-8083}
+        APP_FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
+        APP_SECURITY_DEV_USERNAME: ${CVA_DEV_USERNAME:-cva_officer}
+        APP_SECURITY_DEV_PASSWORD: ${CVA_DEV_PASSWORD:-password123}
+    ports:
+      - "${CVA_BACKEND_PORT:-8083}:8083"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      admin-backend:
+        condition: service_started
+    networks:
+      - ccm-network
+    volumes:
+      - ~/.m2:/root/.m2
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8083/actuator/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+
+#  web-frontend:
+#    build:
+#      context: ../..
+#      dockerfile: apps/web-portal-next/Dockerfile
+#    container_name: ccm-web-frontend
+#    restart: unless-stopped
+#    environment:
+#      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080/api}
+#      NEXT_PUBLIC_BUYER_API_URL: ${NEXT_PUBLIC_BUYER_API_URL:-http://localhost:8081}
+#      NEXT_PUBLIC_OWNER_API_URL: ${NEXT_PUBLIC_OWNER_API_URL:-http://localhost:8082}
+#      NEXT_PUBLIC_CVA_API_URL: ${NEXT_PUBLIC_CVA_API_URL:-http://localhost:8083}
+#    ports:
+#      - "${FRONTEND_PORT:-3000}:3000"
+#    depends_on:
+#      - admin-backend
+#      - buyer-backend
+#      - owner-backend
+#      - cva-backend
+#    networks:
+#      - ccm-network
+#    healthcheck:
+#      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000", "||", "exit", "1"]
+#      interval: 30s
+#      timeout: 10s
+#      start_period: 60s
+#      retries: 3
 
 networks:
   ccm-network:
@@ -70,3 +197,4 @@ networks:
 
 volumes:
   mysql_data:
+    driver: local

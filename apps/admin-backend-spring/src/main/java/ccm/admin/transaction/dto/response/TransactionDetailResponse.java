@@ -1,19 +1,18 @@
 package ccm.admin.transaction.dto.response;
 
 import ccm.admin.transaction.entity.Transaction;
+import ccm.admin.transaction.entity.enums.TransactionType;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Detailed response for transaction detail view
- */
 public record TransactionDetailResponse(
     Long id,
     String transactionCode,
     String buyerEmail,
     String sellerEmail,
-    Double amount,
-    Double totalPrice,
+    BigDecimal amount,
+    BigDecimal totalPrice,
     String status,
     String type,
     LocalDateTime createdAt,
@@ -22,15 +21,26 @@ public record TransactionDetailResponse(
     public TransactionDetailResponse(Transaction t) {
         this(
             t.getId(),
-            t.getTransactionCode(),
+            resolveTransactionCode(t),
             t.getBuyerEmail(),
             t.getSellerEmail(),
             t.getAmount(),
             t.getTotalPrice(),
-            t.getStatus().name(),
-            t.getType().name(),
+            t.getStatus() != null ? t.getStatus().name() : null,
+            resolveTransactionType(t),
             t.getCreatedAt(),
             t.getUpdatedAt()
         );
+    }
+
+    private static String resolveTransactionCode(Transaction t) {
+        if (t.getTransactionCode() != null && !t.getTransactionCode().isBlank()) {
+            return t.getTransactionCode();
+        }
+        return String.format("TX-%06d", t.getId());
+    }
+
+    private static String resolveTransactionType(Transaction t) {
+        return t.getType() != null ? t.getType().name() : TransactionType.CREDIT_PURCHASE.name();
     }
 }

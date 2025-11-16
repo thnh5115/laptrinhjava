@@ -5,12 +5,6 @@
     "paths": {
       "@/*": [
         "./*"
-      ],
-      "@ui/*": [
-        "../../packages/ui/src/*"
-      ],
-      "@sdk/*": [
-        "../../packages/ts-sdk/src/*"
       ]
     },
     "lib": [

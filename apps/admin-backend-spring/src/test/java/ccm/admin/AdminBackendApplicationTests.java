@@ -1,4 +1,4 @@
-package ccm.admin.admin_backend;
+package ccm.admin;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

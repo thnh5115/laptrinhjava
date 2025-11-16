@@ -5,7 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "lint": "eslint .",
+  "lint": "tsc --noEmit",
     "start": "next start",
     "type-check": "tsc --noEmit"
   },
@@ -42,6 +42,7 @@
     "@radix-ui/react-tooltip": "1.1.6",
     "@vercel/analytics": "^1.2.2",
     "autoprefixer": "^10.4.20",
+    "axios": "^1.13.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",

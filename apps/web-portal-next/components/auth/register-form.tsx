@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
-import { useToast } from "@ui/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { RoleSelector } from "./role-selector"
 // TODO: Import from proper location when validators are available
 // import { registerSchema, type RegisterFormData } from "@/lib/validators/register-schema"
@@ -19,12 +19,18 @@ import type { UserRole } from "@/lib/mock-data"
 
 // Temporary inline schema until validators package is properly set up
 import { z } from "zod"
-const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  name: z.string().min(2),
-  role: z.enum(["ev_owner", "buyer", "cva", "admin"])
-})
+const registerSchema = z
+  .object({
+    fullName: z.string().min(2, "Please enter your name"),
+    email: z.string().email("Enter a valid email"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string().min(6, "Confirm your password"),
+    role: z.enum(["ev-owner", "buyer", "cva", "admin"]),
+  })
+  .refine((values) => values.password === values.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords do not match",
+  })
 type RegisterFormData = z.infer<typeof registerSchema>
 
 export function RegisterForm() {
@@ -42,6 +48,10 @@ export function RegisterForm() {
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
       role: "ev-owner",
     },
   })
@@ -68,8 +78,8 @@ export function RegisterForm() {
       id: `user-${Date.now()}`,
       email: data.email,
       password: data.password,
-      role: data.role as UserRole,
-      name: data.fullName,
+    role: data.role as UserRole,
+    name: data.fullName,
     }
 
     // Add to mock users (in a real app, this would be a backend call)

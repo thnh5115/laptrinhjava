@@ -1,8 +1,9 @@
 "use client"
 
+import type React from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp, Clock, CheckCircle2, XCircle, BarChart3 } from "lucide-react"
-import { mockJourneys } from "@/lib/mock-data"
+import { TrendingUp, Clock, CheckCircle2, XCircle, BarChart3, AlertTriangle, Loader2 } from "lucide-react"
 import {
   Line,
   LineChart,
@@ -16,84 +17,91 @@ import {
   Legend,
 } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { listVerificationRequests, type VerificationRequest } from "@/lib/api/cva"
+
+interface AnalyticsState {
+  isLoading: boolean
+  error: string | null
+  items: VerificationRequest[]
+}
 
 export function AnalyticsDashboard() {
-  const verifiedJourneys = mockJourneys.filter((j) => j.status === "verified")
-  const rejectedJourneys = mockJourneys.filter((j) => j.status === "rejected")
-  const pendingJourneys = mockJourneys.filter((j) => j.status === "pending")
+  const [{ isLoading, error, items }, setState] = useState<AnalyticsState>({
+    isLoading: true,
+    error: null,
+    items: [],
+  })
 
-  const totalReviewed = verifiedJourneys.length + rejectedJourneys.length
-  const approvalRate = totalReviewed > 0 ? (verifiedJourneys.length / totalReviewed) * 100 : 0
-  const avgReviewTime = 2.3 // hours
+  useEffect(() => {
+    let cancelled = false
+    setState((prev) => ({ ...prev, isLoading: true, error: null }))
 
-  const totalCreditsVerified = verifiedJourneys.reduce((sum, j) => sum + j.creditsGenerated, 0)
+    listVerificationRequests({ size: 500 })
+      .then((page) => {
+        if (!cancelled) {
+          setState({ isLoading: false, error: null, items: page.content })
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setState({ isLoading: false, error: err.message ?? "Unable to load analytics", items: [] })
+        }
+      })
 
-  const lineData = [
-    { week: "Week 1", reviews: 12 },
-    { week: "Week 2", reviews: 18 },
-    { week: "Week 3", reviews: 15 },
-    { week: "Week 4", reviews: 22 },
-  ]
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
-  const pieData = [
-    { name: "Verified", value: verifiedJourneys.length, color: "#10b981" },
-    { name: "Rejected", value: rejectedJourneys.length, color: "#ef4444" },
-    { name: "Pending", value: pendingJourneys.length, color: "#f59e0b" },
-  ]
+  const analytics = useMemo(() => deriveAnalytics(items), [items])
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold tracking-tight">Verification Analytics</h1>
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+        </div>
+        <p className="text-muted-foreground">Insights generated from live verification activity</p>
+        {error && (
+          <p className="flex items-center gap-2 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4" /> {error}
+          </p>
+        )}
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Reviews</CardTitle>
-            <BarChart3 className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalReviewed}</div>
-            <p className="text-xs text-muted-foreground">Completed verifications</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approval Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{approvalRate.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">Journey approval rate</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Review Time</CardTitle>
-            <Clock className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{avgReviewTime}h</div>
-            <p className="text-xs text-muted-foreground">Per submission</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Credits Verified</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalCreditsVerified.toFixed(1)}</div>
-            <p className="text-xs text-muted-foreground">tCO2 approved</p>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Total Reviews"
+          icon={<BarChart3 className="h-4 w-4 text-emerald-600" />}
+          value={analytics.totalReviewed}
+          subtitle="Completed verifications"
+        />
+        <MetricCard
+          title="Approval Rate"
+          icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
+          value={`${analytics.approvalRate.toFixed(1)}%`}
+          subtitle="Completed decisions"
+        />
+        <MetricCard
+          title="Avg Review Time"
+          icon={<Clock className="h-4 w-4 text-emerald-600" />}
+          value={`${analytics.avgReviewTime.toFixed(1)}h`}
+          subtitle="Submission to decision"
+        />
+        <MetricCard
+          title="Credits Issued"
+          icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+          value={analytics.totalCredits.toFixed(2)}
+          subtitle="tCO₂ approved"
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Review Activity</CardTitle>
-            <CardDescription>Weekly verification trends</CardDescription>
+            <CardDescription>Requests grouped by week</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer
@@ -106,10 +114,10 @@ export function AnalyticsDashboard() {
               className="h-[300px]"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={lineData}>
+                <LineChart data={analytics.weeklyActivity.length ? analytics.weeklyActivity : fallbackWeekly()}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="week" className="text-xs" />
-                  <YAxis className="text-xs" />
+                  <YAxis allowDecimals={false} className="text-xs" />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line
                     type="monotone"
@@ -127,13 +135,13 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Verification Status</CardTitle>
-            <CardDescription>Distribution of journey statuses</CardDescription>
+            <CardDescription>Distribution by decision</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer
               config={{
-                verified: {
-                  label: "Verified",
+                approved: {
+                  label: "Approved",
                   color: "hsl(var(--chart-1))",
                 },
                 rejected: {
@@ -149,8 +157,8 @@ export function AnalyticsDashboard() {
             >
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                    {pieData.map((entry, index) => (
+                  <Pie data={analytics.statusBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                    {analytics.statusBreakdown.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -166,34 +174,154 @@ export function AnalyticsDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Performance Metrics</CardTitle>
-          <CardDescription>Key verification statistics</CardDescription>
+          <CardDescription>Snapshot of current workload</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="flex items-center gap-4 p-4 border rounded-lg">
-              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Verified</p>
-                <p className="text-2xl font-bold">{verifiedJourneys.length}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 p-4 border rounded-lg">
-              <XCircle className="h-8 w-8 text-red-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Rejected</p>
-                <p className="text-2xl font-bold">{rejectedJourneys.length}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 p-4 border rounded-lg">
-              <Clock className="h-8 w-8 text-amber-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold">{pendingJourneys.length}</p>
-              </div>
-            </div>
+            <MetricBlock icon={<CheckCircle2 className="h-8 w-8 text-emerald-600" />} label="Approved" value={analytics.approvedCount} />
+            <MetricBlock icon={<XCircle className="h-8 w-8 text-red-600" />} label="Rejected" value={analytics.rejectedCount} />
+            <MetricBlock icon={<Clock className="h-8 w-8 text-amber-600" />} label="Pending" value={analytics.pendingCount} />
           </div>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+interface AnalyticsSummary {
+  approvedCount: number
+  rejectedCount: number
+  pendingCount: number
+  totalReviewed: number
+  approvalRate: number
+  avgReviewTime: number
+  totalCredits: number
+  weeklyActivity: { week: string; reviews: number }[]
+  statusBreakdown: { name: string; value: number; color: string }[]
+}
+
+function deriveAnalytics(requests: VerificationRequest[]): AnalyticsSummary {
+  const approved = requests.filter((req) => req.status === "APPROVED")
+  const rejected = requests.filter((req) => req.status === "REJECTED")
+  const pending = requests.filter((req) => req.status === "PENDING")
+
+  const totalReviewed = approved.length + rejected.length
+  const approvalRate = totalReviewed > 0 ? (approved.length / totalReviewed) * 100 : 0
+
+  const reviewDurations: number[] = []
+  for (const request of [...approved, ...rejected]) {
+    if (!request.verifiedAt) continue
+    const created = new Date(request.createdAt)
+    const verified = new Date(request.verifiedAt)
+    if (Number.isNaN(created.getTime()) || Number.isNaN(verified.getTime())) continue
+    const diffHours = (verified.getTime() - created.getTime()) / (1000 * 60 * 60)
+    if (diffHours >= 0) {
+      reviewDurations.push(diffHours)
+    }
+  }
+  const avgReviewTime = reviewDurations.length
+    ? reviewDurations.reduce((sum, value) => sum + value, 0) / reviewDurations.length
+    : 0
+
+  const totalCredits = approved.reduce((sum, request) => sum + (request.creditIssuance?.creditsRounded ?? 0), 0)
+
+  const weeklyMap = new Map<string, { week: string; reviews: number; order: number }>()
+  for (const request of requests) {
+    const created = new Date(request.createdAt)
+    if (Number.isNaN(created.getTime())) continue
+    const { key, label, order } = getWeekBucket(created)
+    const existing = weeklyMap.get(key)
+    if (existing) {
+      existing.reviews += 1
+    } else {
+      weeklyMap.set(key, { week: label, reviews: 1, order })
+    }
+  }
+
+  const weeklyActivity = Array.from(weeklyMap.values())
+    .sort((a, b) => a.order - b.order)
+    .slice(-6)
+    .map(({ week, reviews }) => ({ week, reviews }))
+
+  const statusBreakdown = [
+    { name: "Approved", value: approved.length, color: "#10b981" },
+    { name: "Rejected", value: rejected.length, color: "#ef4444" },
+    { name: "Pending", value: pending.length, color: "#f59e0b" },
+  ]
+
+  return {
+    approvedCount: approved.length,
+    rejectedCount: rejected.length,
+    pendingCount: pending.length,
+    totalReviewed,
+    approvalRate,
+    avgReviewTime,
+    totalCredits,
+    weeklyActivity,
+    statusBreakdown,
+  }
+}
+
+function getWeekBucket(date: Date) {
+  const utc = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const day = utc.getUTCDay()
+  const diff = (day + 6) % 7
+  utc.setUTCDate(utc.getUTCDate() - diff)
+  const key = utc.toISOString().slice(0, 10)
+  const label = `Week of ${utc.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+  return { key, label, order: utc.getTime() }
+}
+
+function fallbackWeekly() {
+  return [
+    { week: "Week 1", reviews: 0 },
+    { week: "Week 2", reviews: 0 },
+    { week: "Week 3", reviews: 0 },
+    { week: "Week 4", reviews: 0 },
+  ]
+}
+
+function MetricCard({
+  title,
+  icon,
+  value,
+  subtitle,
+}: {
+  title: string
+  icon: React.ReactNode
+  value: string | number
+  subtitle: string
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        {icon}
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function MetricBlock({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: number
+}) {
+  return (
+    <div className="flex items-center gap-4 rounded-lg border p-4">
+      {icon}
+      <div>
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="text-2xl font-bold">{value}</p>
+      </div>
     </div>
   )
 }

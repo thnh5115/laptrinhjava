@@ -12,16 +12,20 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import java.util.List;
 import java.util.Optional;
 
+/** repository - Service Interface - repository business logic and data operations */
+
 public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
     Optional<User> findByEmail(String email);
+    
+    
+    @EntityGraph(attributePaths = {"role"})
+    Optional<User> findWithRoleByEmail(String email);
+    
     boolean existsByEmail(String email);
     List<User> findByStatus(AccountStatus status);
     List<User> findByRole_Name(String roleName);
     
-    /**
-     * USER-001 FIX: Override findAll with @EntityGraph to eagerly fetch role
-     * This prevents N+1 query problem when loading user list
-     */
+    
     @Override
     @EntityGraph(attributePaths = {"role"})
     Page<User> findAll(Specification<User> spec, Pageable pageable);

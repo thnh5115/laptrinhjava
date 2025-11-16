@@ -13,6 +13,8 @@ import org.hibernate.annotations.CreationTimestamp;
            @Index(name = "idx_audit_actor_id",   columnList = "actor_id")
        })
 @Hidden
+/** entity - Entity - JPA entity for entity table */
+
 public class AuditLog {
 
     @Id
@@ -50,7 +52,7 @@ public class AuditLog {
     @Column(name = "created_at", nullable = false, updatable = false)
     private java.time.LocalDateTime createdAt;
 
-    // Constructors
+    
     public AuditLog() {}
 
     public AuditLog(Long id, User actor, String actorRole, String action, 
@@ -68,7 +70,7 @@ public class AuditLog {
         this.createdAt = createdAt;
     }
 
-    // Getters and Setters
+    
     public Long getId() {
         return id;
     }
@@ -149,7 +151,7 @@ public class AuditLog {
         this.createdAt = createdAt;
     }
 
-    // Builder
+    
     public static AuditLogBuilder builder() {
         return new AuditLogBuilder();
     }

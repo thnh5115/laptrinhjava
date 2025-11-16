@@ -1,10 +1,9 @@
 package ccm.admin.transaction.entity.enums;
 
-/**
- * Transaction type enumeration
- */
+/** enums - Enum - Type categories for enums */
+
 public enum TransactionType {
-    CREDIT_PURCHASE,  // Mua carbon credit
-    CREDIT_SALE,      // Bán carbon credit
-    TRANSFER          // Chuyển nhượng
+    CREDIT_PURCHASE,  
+    CREDIT_SALE,      
+    TRANSFER          
 }

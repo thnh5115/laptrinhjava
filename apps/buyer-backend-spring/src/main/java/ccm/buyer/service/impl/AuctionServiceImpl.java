@@ -17,7 +17,10 @@ import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
+<<<<<<< HEAD
 @Transactional
+=======
+>>>>>>> origin/main
 public class AuctionServiceImpl implements AuctionService {
 
   private final AuctionRepository auctionRepository;
@@ -43,6 +46,7 @@ public class AuctionServiceImpl implements AuctionService {
         .status(BidStatus.OPEN) 
         .createdAt(LocalDateTime.now())
         .build();
+    
     return bidRepository.save(bid);
   }
 }

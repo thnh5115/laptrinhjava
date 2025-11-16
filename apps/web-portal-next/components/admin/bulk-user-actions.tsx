@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ChevronDown, Download, UserX, UserCheck } from "lucide-react"
-import { useToast } from "@ui/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
 
 interface BulkUserActionsProps {
   selectedUsers: string[]

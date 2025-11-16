@@ -1,8 +1,19 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp, Users, Leaf, DollarSign, Activity, CheckCircle2 } from "lucide-react"
-import { mockUsers, mockJourneys, mockTransactions, mockCredits } from "@/lib/mock-data"
+import { TrendingUp, Users, Leaf, DollarSign, Activity, AlertTriangle, RefreshCw } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useToast } from "@/hooks/use-toast"
+import {
+  getKpis,
+  getTransactionTrends,
+  getDisputeRatios,
+  type SystemKpi,
+  type TransactionTrend,
+  type DisputeRatio,
+} from "@/lib/api/admin-analytics"
 import {
   Area,
   AreaChart,
@@ -10,121 +21,228 @@ import {
   XAxis,
   YAxis,
   ResponsiveContainer,
-  Bar,
-  BarChart,
-  Line,
-  LineChart,
+  Pie,
+  PieChart,
+  Cell,
+  Legend,
+  Tooltip,
 } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
 export function PlatformAnalytics() {
-  const totalUsers = mockUsers.length
-  const totalCredits = mockJourneys
-    .filter((j) => j.status === "verified")
-    .reduce((sum, j) => sum + j.creditsGenerated, 0)
-  const totalRevenue = mockTransactions.reduce((sum, t) => sum + t.totalPrice, 0)
-  const totalTransactions = mockTransactions.length
+  const { toast } = useToast()
+  const [kpis, setKpis] = useState<SystemKpi | null>(null)
+  const [trends, setTrends] = useState<TransactionTrend | null>(null)
+  const [disputes, setDisputes] = useState<DisputeRatio | null>(null)
+  const [year, setYear] = useState(new Date().getFullYear())
+  const [loading, setLoading] = useState(true)
 
-  const areaData = [
-    { month: "Jan", revenue: 2400 },
-    { month: "Feb", revenue: 3200 },
-    { month: "Mar", revenue: 2800 },
-    { month: "Apr", revenue: 4100 },
-    { month: "May", revenue: 3800 },
-    { month: "Jun", revenue: 4500 },
-  ]
+  // Fetch all analytics data
+  const fetchAnalytics = async () => {
+    setLoading(true)
+    try {
+      const [kpiData, trendData, disputeData] = await Promise.all([
+        getKpis(),
+        getTransactionTrends(year),
+        getDisputeRatios(),
+      ])
 
-  const barData = [
-    { month: "Jan", credits: 145 },
-    { month: "Feb", credits: 178 },
-    { month: "Mar", credits: 162 },
-    { month: "Apr", credits: 195 },
-    { month: "May", credits: 183 },
-    { month: "Jun", credits: 208 },
-  ]
+      setKpis(kpiData)
+      setTrends(trendData)
+      setDisputes(disputeData)
 
-  const lineData = [
-    { week: "Week 1", active: 45 },
-    { week: "Week 2", active: 52 },
-    { week: "Week 3", active: 48 },
-    { week: "Week 4", active: 61 },
-  ]
+      console.log("[Analytics] KPIs:", kpiData)
+      console.log("[Analytics] Trends:", trendData)
+      console.log("[Analytics] Disputes:", disputeData)
+    } catch (error: any) {
+      console.error("[Analytics] Failed to fetch data:", error)
+      toast({
+        title: "Error Loading Analytics",
+        description: error?.response?.data?.message || "Failed to load analytics data. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAnalytics()
+  }, [year])
+
+  // Transform transaction trends for charts
+  const monthlyData = trends
+    ? Array.from({ length: 12 }, (_, i) => {
+        const month = i + 1
+        const monthKey = `${year}-${month.toString().padStart(2, "0")}`
+        return {
+          month: new Date(year, i).toLocaleString("default", { month: "short" }),
+          transactions: trends.monthlyTransactions[monthKey] ?? 0,
+          revenue: trends.monthlyRevenue[monthKey] ?? 0,
+        }
+      })
+    : []
+
+  // Transform dispute data for pie chart
+  const disputeChartData = disputes
+    ? [
+        { name: "Open", value: disputes.openCount, color: "#ef4444" },
+        { name: "Resolved", value: disputes.resolvedCount, color: "#10b981" },
+        { name: "Rejected", value: disputes.rejectedCount, color: "#6b7280" },
+      ].filter(item => item.value > 0)
+    : []
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {/* KPI Cards Skeleton */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4 rounded" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-32 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {/* Charts Skeleton */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64 mt-2" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-[300px] w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64 mt-2" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-[300px] w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
+      {/* Header with Refresh Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Dashboard KPIs</h2>
+          <p className="text-muted-foreground">Real-time platform performance metrics</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={fetchAnalytics} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-emerald-600" />
+            <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalUsers}</div>
-            <p className="text-xs text-emerald-600">+12% from last month</p>
+            <div className="text-2xl font-bold">{kpis?.totalUsers.toLocaleString() ?? 0}</div>
+            <p className="text-xs text-muted-foreground">Registered in system</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Credits</CardTitle>
-            <Leaf className="h-4 w-4 text-emerald-600" />
+            <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+            <Activity className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCredits.toFixed(1)} tCO2</div>
-            <p className="text-xs text-emerald-600">+18% from last month</p>
+            <div className="text-2xl font-bold">{kpis?.totalTransactions.toLocaleString() ?? 0}</div>
+            <p className="text-xs text-muted-foreground">All statuses</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Platform Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
-            <p className="text-xs text-emerald-600">+23% from last month</p>
+            <div className="text-2xl font-bold">
+              ${kpis?.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}
+            </div>
+            <p className="text-xs text-muted-foreground">Approved transactions</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Transactions</CardTitle>
-            <Activity className="h-4 w-4 text-emerald-600" />
+            <CardTitle className="text-sm font-medium">Disputes</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalTransactions}</div>
-            <p className="text-xs text-emerald-600">+15% from last month</p>
+            <div className="text-2xl font-bold">{kpis?.totalDisputes.toLocaleString() ?? 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {kpis?.disputeRate.toFixed(1) ?? "0.0"}% dispute rate
+            </p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Charts Row 1: Transaction Trends & Dispute Breakdown */}
       <div className="grid gap-4 md:grid-cols-2">
+        {/* Transaction Trends Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Revenue Trends</CardTitle>
-            <CardDescription>Monthly platform revenue</CardDescription>
+            <CardTitle>Transaction Trends - {year}</CardTitle>
+            <CardDescription>Monthly transaction volume and revenue</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer
               config={{
+                transactions: {
+                  label: "Transactions",
+                  color: "hsl(var(--chart-1))",
+                },
                 revenue: {
                   label: "Revenue ($)",
-                  color: "hsl(var(--chart-1))",
+                  color: "hsl(var(--chart-2))",
                 },
               }}
               className="h-[300px]"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={areaData}>
+                <AreaChart data={monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" className="text-xs" />
-                  <YAxis className="text-xs" />
+                  <XAxis dataKey="month" className="text-xs" tick={{ fill: "hsl(var(--foreground))" }} />
+                  <YAxis yAxisId="left" className="text-xs" tick={{ fill: "hsl(var(--foreground))" }} />
+                  <YAxis yAxisId="right" orientation="right" className="text-xs" tick={{ fill: "hsl(var(--foreground))" }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Area
+                    yAxisId="left"
                     type="monotone"
-                    dataKey="revenue"
+                    dataKey="transactions"
                     stroke="var(--color-chart-1)"
                     fill="var(--color-chart-1)"
+                    fillOpacity={0.2}
+                  />
+                  <Area
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="var(--color-chart-2)"
+                    fill="var(--color-chart-2)"
                     fillOpacity={0.2}
                   />
                 </AreaChart>
@@ -133,89 +251,55 @@ export function PlatformAnalytics() {
           </CardContent>
         </Card>
 
+        {/* Dispute Ratio Pie Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Credit Generation</CardTitle>
-            <CardDescription>Monthly verified carbon credits</CardDescription>
+            <CardTitle>Dispute Status Breakdown</CardTitle>
+            <CardDescription>Distribution of disputes by status</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer
-              config={{
-                credits: {
-                  label: "Credits (tCO2)",
-                  color: "hsl(var(--chart-1))",
-                },
-              }}
-              className="h-[300px]"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="credits" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} />
-                </BarChart>
+            {disputeChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={disputeChartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {disputeChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
               </ResponsiveContainer>
-            </ChartContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No dispute data available
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Active Users</CardTitle>
-          <CardDescription>Weekly active user count</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer
-            config={{
-              active: {
-                label: "Active Users",
-                color: "hsl(var(--chart-1))",
-              },
-            }}
-            className="h-[300px]"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={lineData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="week" className="text-xs" />
-                <YAxis className="text-xs" />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line
-                  type="monotone"
-                  dataKey="active"
-                  stroke="var(--color-chart-1)"
-                  strokeWidth={2}
-                  dot={{ fill: "var(--color-chart-1)" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        </CardContent>
-      </Card>
-
+      {/* Additional Metrics Row */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Verification Rate</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">92.3%</div>
-            <p className="text-xs text-muted-foreground">Journey approval rate</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Transaction</CardTitle>
+            <CardTitle className="text-sm font-medium">Avg Transaction Value</CardTitle>
             <DollarSign className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${totalTransactions > 0 ? (totalRevenue / totalTransactions).toFixed(2) : "0.00"}
+              ${kpis && kpis.totalTransactions > 0
+                ? (kpis.totalRevenue / kpis.totalTransactions).toFixed(2)
+                : "0.00"}
             </div>
             <p className="text-xs text-muted-foreground">Per transaction</p>
           </CardContent>
@@ -223,12 +307,23 @@ export function PlatformAnalytics() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Market Activity</CardTitle>
-            <TrendingUp className="h-4 w-4 text-emerald-600" />
+            <CardTitle className="text-sm font-medium">Open Disputes</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockCredits.filter((c) => c.status === "available").length}</div>
-            <p className="text-xs text-muted-foreground">Active listings</p>
+            <div className="text-2xl font-bold">{disputes?.openCount.toLocaleString() ?? 0}</div>
+            <p className="text-xs text-muted-foreground">Requires attention</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Resolved Disputes</CardTitle>
+            <Activity className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{disputes?.resolvedCount.toLocaleString() ?? 0}</div>
+            <p className="text-xs text-muted-foreground">Successfully closed</p>
           </CardContent>
         </Card>
       </div>

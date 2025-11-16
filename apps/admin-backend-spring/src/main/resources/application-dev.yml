@@ -1,37 +1,33 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/carbon_admin}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
-
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
+        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
     open-in-view: false
-
   flyway:
     enabled: true
+    url: ${DB_URL:jdbc:mysql://localhost:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    user: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    locations: classpath:db/migration
     baseline-on-migrate: true
-
-  # Jackson configuration to prevent OpenAPI serialization errors
   jackson:
     serialization:
       FAIL_ON_EMPTY_BEANS: false
     default-property-inclusion: NON_NULL
-
 server:
-  port: 8080
-
-# JWT Configuration
+  port: ${SERVER_PORT:8180}
 app:
   security:
     jwt:
-      secret: ${JWT_SECRET:my-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256}
-      expiration-ms: ${JWT_EXPIRATION_MS:900000} # 15 minutes (15 * 60 * 1000)
-      # For production: Consider implementing refresh tokens with 7-day expiration
-      # refresh-expiration-ms: 604800000 # 7 days (7 * 24 * 60 * 60 * 1000)
+      secret: my-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256
+      expiration-ms: 900000
+      refresh-expiration-ms: 604800000

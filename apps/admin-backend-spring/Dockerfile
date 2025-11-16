@@ -1,7 +1,12 @@
 # Stage 1: Build
 FROM eclipse-temurin:21-jdk-alpine AS builder
 
+ARG CACHE_BUST=1
+ENV CACHE_BUST=${CACHE_BUST}
+
 WORKDIR /workspace
+
+RUN echo "Building admin-backend with cache bust token: ${CACHE_BUST}"
 
 # Copy Maven wrapper and pom files
 COPY mvnw .
@@ -9,12 +14,21 @@ COPY .mvn .mvn
 COPY pom.xml .
 COPY packages/java-common/pom.xml packages/java-common/
 COPY apps/admin-backend-spring/pom.xml apps/admin-backend-spring/
+COPY apps/cva-backend-spring/pom.xml apps/cva-backend-spring/
+COPY apps/buyer-backend-spring/pom.xml apps/buyer-backend-spring/
+COPY apps/owner-backend-spring/pom.xml apps/owner-backend-spring/
+COPY packages/java-common/src packages/java-common/src
+
+# Fix CRLF issues and ensure executable bit for mvnw
+RUN sed -i 's/\r$//' mvnw && chmod +x ./mvnw
+
+# Build and install shared library into local Maven repo
+RUN ./mvnw -pl packages/java-common -am install -DskipTests
 
 # Download dependencies
-RUN ./mvnw dependency:go-offline -B
+RUN ./mvnw -pl apps/admin-backend-spring -am dependency:go-offline -B
 
 # Copy source code
-COPY packages/java-common/src packages/java-common/src
 COPY apps/admin-backend-spring/src apps/admin-backend-spring/src
 COPY apps/admin-backend-spring/lombok.config apps/admin-backend-spring/
 
@@ -32,6 +46,7 @@ RUN addgroup -g 1001 -S appgroup && \
 
 # Copy JAR from builder
 COPY --from=builder /workspace/apps/admin-backend-spring/target/*.jar app.jar
+COPY --from=builder /workspace/apps/admin-backend-spring/src/main/resources/db/migration /app/db/migration
 
 # Change ownership
 RUN chown -R appuser:appgroup /app

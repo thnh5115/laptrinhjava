@@ -15,53 +15,36 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 @Slf4j
+/** Audit - REST Controller - Admin endpoints for Audit management */
+
 public class AuditAdminController {
 
     private final AuditLogService auditLogService;
 
-    /**
-     * Get paginated audit logs with filtering and sorting
-     *
-     * @param page      Page number (default: 0)
-     * @param size      Page size (default: 10)
-     * @param sortBy    Sort field (default: createdAt)
-     * @param direction Sort direction (default: desc)
-     * @param keyword   Keyword to filter by endpoint
-     * @param username  Filter by username
-     * @return Paginated audit logs
-     */
+    
     @GetMapping
     public PageResponse<AuditLogResponse> getLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(defaultValue = "createdAt,desc") String sort,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String username) {
 
-        log.info("GET /api/admin/audit - page: {}, size: {}, sortBy: {}, direction: {}, keyword: {}, username: {}",
-                page, size, sortBy, direction, keyword, username);
+        log.info("GET /api/admin/audit - page: {}, size: {}, sort: {}, keyword: {}, username: {}",
+                page, size, sort, keyword, username);
 
-        return auditLogService.getAuditLogs(page, size, sortBy, direction, keyword, username);
+        return auditLogService.getAuditLogs(page, size, sort, keyword, username);
     }
 
-    /**
-     * Get audit summary statistics
-     *
-     * @return Summary with total logs, total users, and error count
-     */
+    
+    /** GET /api/admin/audit/summary - perform operation */
     @GetMapping("/summary")
     public AuditSummaryResponse getSummary() {
         log.info("GET /api/admin/audit/summary");
         return auditLogService.getSummary();
     }
 
-    /**
-     * Get audit charts data for dashboard
-     *
-     * @param days Number of days to analyze (default: 7)
-     * @return Charts with requests by day and top endpoints
-     */
+    
     @GetMapping("/charts")
     public AuditChartResponse getCharts(@RequestParam(defaultValue = "7") int days) {
         log.info("GET /api/admin/audit/charts - days: {}", days);

@@ -17,6 +17,7 @@ import {
 import { Leaf, LogOut, Moon, Sun, Menu } from "lucide-react"
 import type { User } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/contexts/AuthContext"
 
 interface DashboardLayoutProps {
   children: ReactNode
@@ -30,18 +31,24 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, navigation }: DashboardLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [user, setUser] = useState<User | null>(null)
+  const { user: authUser, status, logout: authLogout } = useAuth()
   const [isDark, setIsDark] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    // Check authentication
-    const currentUser = localStorage.getItem("currentUser")
-    if (!currentUser) {
+    console.log('[DashboardLayout] Status:', status, 'User:', authUser?.email)
+    
+    // Don't redirect during loading or if already authenticated
+    if (status === 'loading' || status === 'idle') {
+      return
+    }
+    
+    // Only redirect if definitely unauthenticated
+    if (status === 'unauthenticated' && !authUser) {
+      console.log('[DashboardLayout] Not authenticated, redirecting to /login')
       router.push("/login")
       return
     }
-    setUser(JSON.parse(currentUser))
 
     // Check theme preference
     const theme = localStorage.getItem("theme")
@@ -50,11 +57,12 @@ export function DashboardLayout({ children, navigation }: DashboardLayoutProps) 
     if (prefersDark) {
       document.documentElement.classList.add("dark")
     }
-  }, [router])
+  }, [router, status, authUser])
 
-  const handleLogout = () => {
-    localStorage.removeItem("currentUser")
-    router.push("/login")
+  const handleLogout = async () => {
+    console.log('[DashboardLayout] Logging out...')
+    await authLogout()
+    // authLogout already redirects to /login
   }
 
   const toggleTheme = () => {
@@ -69,7 +77,17 @@ export function DashboardLayout({ children, navigation }: DashboardLayoutProps) 
     }
   }
 
-  if (!user) {
+  // Show loading state
+  if (status === 'loading' || status === 'idle') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    )
+  }
+
+  // Don't render if not authenticated
+  if (status === 'unauthenticated' || !authUser) {
     return null
   }
 
@@ -104,20 +122,23 @@ export function DashboardLayout({ children, navigation }: DashboardLayoutProps) 
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar>
-                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  <AvatarImage src="/placeholder.svg" alt={authUser.fullName || authUser.email} />
+                  <AvatarFallback>{(authUser.fullName || authUser.email).charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{user.name}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                  <p className="text-sm font-medium">{authUser.fullName || authUser.email}</p>
+                  <p className="text-xs text-muted-foreground">{authUser.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
+              <DropdownMenuItem onClick={() => {
+                console.log('=== LOGOUT BUTTON CLICKED ===');
+                handleLogout();
+              }}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>

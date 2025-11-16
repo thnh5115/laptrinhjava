@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -50,10 +51,9 @@ class TransactionServiceImplTest {
                 .transactionCode("TX-001")
                 .buyerEmail("buyer@example.com")
                 .sellerEmail("seller@example.com")
-                .amount(100.0)
-                .totalPrice(5000.0)
+                .amount(BigDecimal.valueOf(100.0))
+                .totalPrice(BigDecimal.valueOf(5000.0))
                 .status(TransactionStatus.PENDING)
-                .version(0L)
                 .build();
     }
 
@@ -193,7 +193,6 @@ class TransactionServiceImplTest {
                 .id(1L)
                 .transactionCode("TX-001")
                 .status(TransactionStatus.APPROVED)
-                .version(1L)  // Version incremented by Hibernate
                 .build();
         
         when(transactionRepository.save(any(Transaction.class))).thenReturn(savedTransaction);

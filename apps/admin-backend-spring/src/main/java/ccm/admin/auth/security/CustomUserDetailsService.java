@@ -15,6 +15,10 @@ import java.util.Collection;
 import java.util.Collections;
 
 @Service
+/** security - Service Implementation - security business logic and data operations */
+
+/** @summary <business action> */
+
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
@@ -23,6 +27,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         this.userRepository = userRepository;
     }
 
+    /** Process business logic - transactional */
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {

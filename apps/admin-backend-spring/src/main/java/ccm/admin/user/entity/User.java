@@ -12,6 +12,8 @@ import org.hibernate.annotations.UpdateTimestamp;
            @Index(name = "idx_users_role_id", columnList = "role_id")
        })
 @Hidden
+/** entity - Entity - JPA entity for entity table */
+
 public class User {
 
     @Id
@@ -44,7 +46,7 @@ public class User {
     @Column(name = "updated_at")
     private java.time.LocalDateTime updatedAt;
 
-    // Constructors
+    
     public User() {}
 
     public User(Long id, String email, String passwordHash, String fullName, 
@@ -60,7 +62,7 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    // Getters and Setters
+    
     public Long getId() {
         return id;
     }
@@ -125,7 +127,7 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    // Builder pattern
+    
     public static UserBuilder builder() {
         return new UserBuilder();
     }

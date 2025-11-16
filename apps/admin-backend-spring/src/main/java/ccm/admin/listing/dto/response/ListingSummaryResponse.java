@@ -6,14 +6,13 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Response DTO for listing summary
- * Used in list view and detail view
- */
 @Data
 @Builder
+/** response - Response DTO - Response model for response data */
+
 public class ListingSummaryResponse {
     private Long id;
+    private Long carbonCreditId;
     private String title;
     private String description;
     private String ownerEmail;
@@ -21,7 +20,14 @@ public class ListingSummaryResponse {
     private BigDecimal price;
     private BigDecimal quantity;
     private String unit;
+    private String listingType;
     private String status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    // Approval tracking fields
+    private Long approvedBy;
+    private String approvedByEmail;
+    private LocalDateTime approvedAt;
+    private String rejectReason;
 }

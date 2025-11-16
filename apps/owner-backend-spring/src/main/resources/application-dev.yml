@@ -1,0 +1,29 @@
+﻿spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none # Let Flyway manage the database schema
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+    baseline-on-migrate: true # Handle existing tables gracefully
+    schemas: ccm # Ensure correct schema is used
+    validate-on-migrate: false # Skip checksum validation (useful in dev)
+
+server:
+  port: ${SERVER_PORT:8182}
+
+logging:
+  level:
+    org.flywaydb: info
+    org.hibernate.SQL: debug

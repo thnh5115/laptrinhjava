@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "roles")
 @Hidden
+/** entity - Entity - JPA entity for entity table */
+
 public class Role {
 
     @Id
@@ -21,7 +23,7 @@ public class Role {
     @Column(name = "created_at", nullable = false, updatable = false)
     private java.time.LocalDateTime createdAt;
 
-    // Constructors
+    
     public Role() {}
 
     public Role(Long id, String name, String description, java.time.LocalDateTime createdAt) {
@@ -31,7 +33,7 @@ public class Role {
         this.createdAt = createdAt;
     }
 
-    // Getters and Setters
+    
     public Long getId() {
         return id;
     }
@@ -64,7 +66,7 @@ public class Role {
         this.createdAt = createdAt;
     }
 
-    // Builder
+    
     public static RoleBuilder builder() {
         return new RoleBuilder();
     }

@@ -1,15 +1,19 @@
-# Bỏ các thư mục dữ liệu DB, build, cache, VCS
-**/mysql_data/**
-**/mysql/**
+# Không gửi Git metadata
+.git
+.gitignore
 
-**/target/**
-**/node_modules/**
-**/.git/**
-**/.idea/**
-**/.vscode/**
+# Log
+*.log
+npm-debug.log*
 
-# Bỏ file socket / lock / temp
-**/*.sock
-**/*.pid
-**/*.log
-**/.DS_Store
+# Lock file (tuỳ bạn muốn giữ gì)
+yarn.lock
+pnpm-lock.yaml
+
+# Node modules (nhưng KHÔNG chặn nguyên thư mục apps)
+node_modules
+**/node_modules
+
+# Next build output
+**/.next
+**/dist

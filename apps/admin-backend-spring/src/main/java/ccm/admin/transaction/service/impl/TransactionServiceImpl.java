@@ -11,10 +11,12 @@ import ccm.admin.transaction.repository.TransactionAuditLogRepository;
 import ccm.admin.transaction.repository.TransactionRepository;
 import ccm.admin.transaction.service.TransactionService;
 import ccm.admin.transaction.spec.TransactionSpecification;
+import ccm.common.util.SortUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,57 +30,51 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Implementation of TransactionService
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
+/** Transaction - Service Implementation - Business logic for Transaction operations */
+
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final TransactionAuditLogRepository auditLogRepository;
 
-    /**
-     * PR-2 (TX-002): State transition rules for transaction status
-     * Defines which status changes are allowed to prevent invalid state transitions
-     */
+    
     private static final Map<TransactionStatus, Set<TransactionStatus>> VALID_TRANSITIONS = Map.of(
         TransactionStatus.PENDING, Set.of(TransactionStatus.APPROVED, TransactionStatus.REJECTED),
-        TransactionStatus.APPROVED, Set.of(), // Final state - no transitions allowed
-        TransactionStatus.REJECTED, Set.of()  // Final state - no transitions allowed
+        TransactionStatus.APPROVED, Set.of(), 
+        TransactionStatus.REJECTED, Set.of()  
     );
 
+    /** Get all records - transactional */
     @Override
     @Transactional(readOnly = true)
     public PageResponse<TransactionSummaryResponse> getAllTransactions(
             int page, 
             int size, 
-            String sortBy, 
-            String direction,
+            String sort,
             String keyword, 
             String status, 
             String type) {
         
-        // Build sort
-        Sort sort = direction != null && direction.equalsIgnoreCase("asc") 
-            ? Sort.by(sortBy).ascending() 
-            : Sort.by(sortBy).descending();
         
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Sort sortSpec = SortUtils.parseSort(sort);
+        
+        Pageable pageable = PageRequest.of(page, size, sortSpec);
 
-        // Build specification with filters
+        
         Specification<Transaction> spec = TransactionSpecification.filter(keyword, status, type);
         
-        // Query with specification
+        
         Page<Transaction> transactionPage = transactionRepository.findAll(spec, pageable);
 
-        // Map to DTO
+        
         List<TransactionSummaryResponse> content = transactionPage.getContent()
             .stream()
             .map(t -> new TransactionSummaryResponse(
                 t.getId(),
-                t.getTransactionCode(),
+                resolveTransactionCode(t),
                 t.getBuyerEmail(),
                 t.getSellerEmail(),
                 t.getTotalPrice(),
@@ -87,7 +83,7 @@ public class TransactionServiceImpl implements TransactionService {
             ))
             .toList();
 
-        // Build PageResponse
+        
         return new PageResponse<>(
             content,
             transactionPage.getNumber(),
@@ -100,6 +96,7 @@ public class TransactionServiceImpl implements TransactionService {
         );
     }
 
+    /** Process business logic - transactional */
     @Override
     @Transactional(readOnly = true)
     public TransactionDetailResponse getTransactionById(Long id) {
@@ -111,6 +108,14 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {
+        "reports:summary", 
+        "reports:monthly", 
+        "analytics:kpis", 
+        "analytics:trends", 
+        "analytics:disputes"
+    }, allEntries = true)
+    /** Update status - modifies data */
     public void updateStatus(Long id, UpdateTransactionStatusRequest request) {
         Transaction transaction = transactionRepository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Transaction not found with id: " + id));
@@ -118,7 +123,7 @@ public class TransactionServiceImpl implements TransactionService {
         TransactionStatus currentStatus = transaction.getStatus();
         TransactionStatus newStatus = request.status();
 
-        // PR-2 (TX-002): Validate state transition
+        
         Set<TransactionStatus> allowedTransitions = VALID_TRANSITIONS.getOrDefault(currentStatus, Set.of());
         if (!allowedTransitions.contains(newStatus)) {
             log.warn("Invalid transaction status transition: {} -> {} for transaction ID: {}", 
@@ -130,22 +135,22 @@ public class TransactionServiceImpl implements TransactionService {
 
         log.info("Updating transaction ID: {} from {} to {}", id, currentStatus, newStatus);
 
-        // Update status
+        
         transaction.setStatus(newStatus);
         transaction.setUpdatedAt(LocalDateTime.now());
         
         try {
-            // PR-2 (TX-003): Save with optimistic locking
-            // @Version field will detect concurrent modifications
+            
+            
             transactionRepository.save(transaction);
             
-            // PR-2 (TX-004): Create audit log entry
-            // TODO: Get current user from SecurityContext
-            String currentUser = "admin@carbon.local"; // Placeholder - will get from auth context
+            
+            
+            String currentUser = "admin@carbon.local"; 
             
             TransactionAuditLog auditLog = TransactionAuditLog.builder()
                     .transactionId(transaction.getId())
-                    .transactionCode(transaction.getTransactionCode())
+                    .transactionCode(resolveTransactionCode(transaction))
                     .oldStatus(currentStatus)
                     .newStatus(newStatus)
                     .changedBy(currentUser)
@@ -160,5 +165,12 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalStateException(
                 "Transaction was modified by another user. Please refresh and try again.", e);
         }
+    }
+
+    private String resolveTransactionCode(Transaction transaction) {
+        if (transaction.getTransactionCode() != null && !transaction.getTransactionCode().isBlank()) {
+            return transaction.getTransactionCode();
+        }
+        return String.format("TX-%06d", transaction.getId());
     }
 }

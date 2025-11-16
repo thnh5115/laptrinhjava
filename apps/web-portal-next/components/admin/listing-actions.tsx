@@ -1,114 +1,219 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { mockListings, mockUsers } from "@/lib/mock-data"
-import { useToast } from "@ui/hooks/use-toast"
-import { Flag, Check, X } from "lucide-react"
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet"
+import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/hooks/use-toast"
+import { Check, X, Loader2 } from "lucide-react"
+import {
+  getListing,
+  updateListingStatus,
+  ListingStatus,
+  type ListingSummary,
+} from "@/lib/api/admin-listings"
 
 interface ListingActionsProps {
-  listingId: string
+  listingId: number
   onClose: () => void
+  onSuccess: () => void
 }
 
-export function ListingActions({ listingId, onClose }: ListingActionsProps) {
-  const [reason, setReason] = useState("")
+export function ListingActions({ listingId, onClose, onSuccess }: ListingActionsProps) {
+  const [listing, setListing] = useState<ListingSummary | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   const { toast } = useToast()
 
-  const listing = mockListings.find((l) => l.id === listingId)
-  const seller = mockUsers.find((u) => u.id === listing?.sellerId)
+  useEffect(() => {
+    const fetchListing = async () => {
+      setIsLoading(true)
+      try {
+        const data = await getListing(listingId)
+        setListing(data)
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.response?.data?.message || "Failed to load listing details",
+          variant: "destructive",
+        })
+        onClose()
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchListing()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingId])
 
-  if (!listing) return null
+  const handleAction = async (action: "approve" | "reject") => {
+    if (!listing) return
 
-  const handleAction = (action: "flag" | "approve" | "remove") => {
-    toast({
-      title: `Listing ${action === "flag" ? "Flagged" : action === "approve" ? "Approved" : "Removed"}`,
-      description: `The listing has been ${action}ed successfully.`,
-    })
-    onClose()
+    setIsUpdating(true)
+    try {
+      const status = action === "approve" ? ListingStatus.APPROVED : ListingStatus.REJECTED
+      await updateListingStatus(listingId, status)
+
+      toast({
+        title: "Success",
+        description: `Listing ${action}d successfully`,
+      })
+
+      onSuccess() // Refresh parent list
+      onClose()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || `Failed to ${action} listing`,
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "PENDING":
+        return "bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100"
+      case "APPROVED":
+        return "bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100"
+      case "REJECTED":
+        return "bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-100"
+      case "DELISTED":
+        return "bg-slate-200 text-slate-900 dark:bg-slate-900 dark:text-slate-100"
+      default:
+        return ""
+    }
   }
 
   return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Moderate Listing</DialogTitle>
-          <DialogDescription>Review and take action on this listing</DialogDescription>
-        </DialogHeader>
+    <Sheet open={true} onOpenChange={onClose}>
+      <SheetContent className="w-[500px]">
+        <SheetHeader>
+          <SheetTitle>Listing Details</SheetTitle>
+          <SheetDescription>Review and approve/reject this listing</SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-4">
-          <div className="p-4 border rounded-lg bg-muted/50">
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="text-muted-foreground">Seller:</span> {seller?.name}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
+        {!isLoading && listing && (() => {
+          const credits = Number(listing.quantity ?? 0)
+          const pricePerCredit = Number(listing.price ?? 0)
+          const totalPrice = pricePerCredit * credits
+          const ownerName = listing.ownerFullName || listing.ownerEmail
+          return (
+            <div className="mt-6 space-y-6">
+            {/* Status Badge */}
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Status</label>
+              <div className="mt-1">
+                <Badge className={getStatusColor(listing.status)}>{listing.status}</Badge>
               </div>
+            </div>
+
+            {/* Basic Info */}
+            <div className="space-y-4">
               <div>
-                <span className="text-muted-foreground">Amount:</span> {listing.amount} tCO2
+                <label className="text-sm font-medium text-muted-foreground">Title</label>
+                <p className="text-sm font-medium mt-1">{listing.title}</p>
               </div>
+
               <div>
-                <span className="text-muted-foreground">Price:</span> ${listing.pricePerCredit}/credit
+                <label className="text-sm font-medium text-muted-foreground">Description</label>
+                <p className="text-sm mt-1 text-muted-foreground">{listing.description}</p>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Credits</label>
+                  <p className="text-sm font-medium mt-1">{credits} {listing.unit || "tCO2"}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Price/Credit</label>
+                  <p className="text-sm font-medium mt-1">${pricePerCredit.toFixed(2)}</p>
+                </div>
+              </div>
+
               <div>
-                <span className="text-muted-foreground">Total:</span> $
-                {(listing.amount * listing.pricePerCredit).toFixed(2)}
+                <label className="text-sm font-medium text-muted-foreground">Total Price</label>
+                <p className="text-lg font-bold mt-1">${totalPrice.toFixed(2)}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Owner</label>
+                <div className="mt-1">
+                  <p className="text-sm font-medium">{ownerName}</p>
+                  <p className="text-xs text-muted-foreground">{listing.ownerEmail}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Created</label>
+                  <p className="text-sm mt-1">{new Date(listing.createdAt).toLocaleString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Updated</label>
+                  <p className="text-sm mt-1">{new Date(listing.updatedAt).toLocaleString()}</p>
+                </div>
               </div>
             </div>
           </div>
+            )
+          })()}
 
-          {listing.status === "flagged" && listing.flaggedReason && (
-            <div className="p-3 border border-red-200 rounded-lg bg-red-50 dark:bg-red-950">
-              <p className="text-sm font-medium text-red-900 dark:text-red-100">Flagged Reason:</p>
-              <p className="text-sm text-red-700 dark:text-red-300 mt-1">{listing.flaggedReason}</p>
-            </div>
-          )}
-
-          <div>
-            <label className="text-sm font-medium">
-              {listing.status === "active" ? "Reason for Flagging" : "Action Notes"}
-            </label>
-            <Textarea
-              placeholder="Enter reason or notes..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="mt-1"
-              rows={3}
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          {listing.status === "active" && (
-            <Button variant="destructive" onClick={() => handleAction("flag")}>
-              <Flag className="h-4 w-4 mr-1" />
-              Flag Listing
-            </Button>
-          )}
-          {listing.status === "flagged" && (
-            <>
-              <Button variant="outline" onClick={() => handleAction("remove")}>
-                <X className="h-4 w-4 mr-1" />
-                Remove
+        {!isLoading && listing && listing.status === "PENDING" && (
+          <SheetFooter className="mt-6 pt-6 border-t">
+            <div className="flex gap-2 w-full">
+              <Button
+                className="flex-1"
+                variant="destructive"
+                onClick={() => handleAction("reject")}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4 mr-2" />
+                )}
+                Reject
               </Button>
-              <Button onClick={() => handleAction("approve")}>
-                <Check className="h-4 w-4 mr-1" />
+              <Button
+                className="flex-1"
+                onClick={() => handleAction("approve")}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4 mr-2" />
+                )}
                 Approve
               </Button>
-            </>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            </div>
+          </SheetFooter>
+        )}
+
+        {!isLoading && listing && listing.status !== "PENDING" && (
+          <SheetFooter className="mt-6 pt-6 border-t">
+            <Button variant="outline" onClick={onClose} className="w-full">
+              Close
+            </Button>
+          </SheetFooter>
+        )}
+      </SheetContent>
+    </Sheet>
   )
 }

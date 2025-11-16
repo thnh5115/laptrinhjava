@@ -1,6 +1,7 @@
 package ccm.admin.listing.entity;
 
 import ccm.admin.listing.entity.enums.ListingStatus;
+import ccm.admin.listing.entity.enums.ListingType;
 import ccm.admin.user.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -10,11 +11,6 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Carbon Credit Listing Entity
- * Represents a carbon credit listing created by EV Owners
- * Admin can approve/reject listings
- */
 @Entity
 @Table(name = "listings")
 @Getter
@@ -23,13 +19,18 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Hidden
+/** entity - Entity - JPA entity for entity table */
+
 public class Listing {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "carbon_credit_id", nullable = false)
+    private Long carbonCreditId;
+
+    @Column(nullable = false, length = 255)
     private String title;
 
     @Column(columnDefinition = "TEXT")
@@ -38,18 +39,22 @@ public class Listing {
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal price;
 
-    @Column(nullable = false, precision = 15, scale = 2)
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal quantity;
 
     @Column(length = 50)
     private String unit;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "listing_type", nullable = false, length = 20)
+    private ListingType listingType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private ListingStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", nullable = false)
+    @JoinColumn(name = "seller_id", nullable = false)
     @JsonIgnoreProperties({"role", "passwordHash", "createdAt", "updatedAt", "status"})
     private User owner;
 
@@ -59,12 +64,27 @@ public class Listing {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    /** Admin who approved/rejected the listing */
+    @Column(name = "approved_by")
+    private Long approvedBy;
+
+    /** When the listing was approved/rejected */
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    /** Reason for rejection or delisting */
+    @Column(name = "reject_reason", columnDefinition = "TEXT")
+    private String rejectReason;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         if (status == null) {
             status = ListingStatus.PENDING;
+        }
+        if (listingType == null) {
+            listingType = ListingType.FIXED_PRICE;
         }
         if (unit == null) {
             unit = "kgCO2";
