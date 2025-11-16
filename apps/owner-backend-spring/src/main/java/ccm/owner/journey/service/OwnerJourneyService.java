@@ -31,7 +31,7 @@ public class OwnerJourneyService {
     private final UserRepository userRepository;
 
     // Carbon credit calculation constants
-    private static final BigDecimal CO2_SAVED_PER_KM = BigDecimal.valueOf(0.12); // kg CO2 per km
+    private static final BigDecimal CO2_SAVED_PER_KM = BigDecimal.valueOf(0.142); // kg CO2 per km
     private static final BigDecimal CREDIT_CONVERSION_RATE = BigDecimal.valueOf(0.001); // 1 credit = 1 ton CO2
 
     /**
