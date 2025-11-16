@@ -16,8 +16,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 
+import java.util.ArrayList;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any; // ĐÃ THÊM
+import static org.mockito.ArgumentMatchers.anyInt;
 
 /**
  * Cache-specific tests for ReportService
@@ -53,6 +57,8 @@ class ReportServiceCacheTest {
         lenient().when(transactionRepository.countByStatus(TransactionStatus.PENDING)).thenReturn(15L);
         lenient().when(transactionRepository.countByStatus(TransactionStatus.REJECTED)).thenReturn(5L);
         lenient().when(transactionRepository.calculateApprovedRevenue()).thenReturn(15000.0);
+
+        lenient().when(transactionRepository.findMonthlyStatsByYear(anyInt())).thenReturn(new ArrayList<>());
     }
 
     @Test
@@ -109,8 +115,8 @@ class ReportServiceCacheTest {
         // Then: Both should be cached separately by year
         assertThat(report2025).isNotNull();
         
-        // Verify: findAll() called twice (once per year)
-        verify(transactionRepository, times(2)).findAll();
+        verify(transactionRepository, times(1)).findMonthlyStatsByYear(2024);
+        verify(transactionRepository, times(1)).findMonthlyStatsByYear(2025);
     }
 
     @Test
@@ -153,9 +159,9 @@ class ReportServiceCacheTest {
         reportService.getMonthlyReport(2025);
         reportService.getMonthlyReport(2025);
 
-        // Then: In integration test, findAll() would be called only once
-        // In unit test (no Spring context), called 3 times
-        verify(transactionRepository, times(3)).findAll();
+        // Sửa: Code nghiệp vụ gọi findMonthlyStatsByYear, không gọi findAll
+ // (Trong unit test, cache không hoạt động, nên gọi 3 lần là đúng)
+verify(transactionRepository, times(3)).findMonthlyStatsByYear(2025);
         
         // Note: With @SpringBootTest and actual caching:
         // verify(transactionRepository, times(1)).findAll();
@@ -188,8 +194,10 @@ class ReportServiceCacheTest {
         assertThat(report2025).isNotNull();
         assertThat(report2026).isNotNull();
         
-        // Verify: Each year queries database separately
-        verify(transactionRepository, times(3)).findAll();
+        //Sửa: Code nghiệp vụ gọi findMonthlyStatsByYear, không gọi findAll
+        verify(transactionRepository, times(1)).findMonthlyStatsByYear(2024);
+        verify(transactionRepository, times(1)).findMonthlyStatsByYear(2025);
+        verify(transactionRepository, times(1)).findMonthlyStatsByYear(2026);
         
         // In integration test with caching:
         // - 3 separate cache entries: reports:monthly::2024, reports:monthly::2025, reports:monthly::2026

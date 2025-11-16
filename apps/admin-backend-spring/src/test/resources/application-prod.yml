@@ -1,0 +1,49 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate # Production: only validate, don't auto-update schema
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: false # Disable SQL formatting in production
+    open-in-view: false
+    show-sql: false # Disable SQL logging in production
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: false # Production: don't auto-baseline
+    validate-on-migrate: true # Validate migrations before applying
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never # Don't expose error details
+    include-stacktrace: never
+  compression:
+    enabled: true
+
+# JWT Configuration (MUST be set via environment variables)
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET} # REQUIRED - no default in production
+      expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+# Logging
+logging:
+  level:
+    root: INFO
+    ccm.admin.admin_backend: INFO
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
