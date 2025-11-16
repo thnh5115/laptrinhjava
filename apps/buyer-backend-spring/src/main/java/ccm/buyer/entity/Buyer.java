@@ -3,6 +3,7 @@ package ccm.buyer.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 
@@ -15,6 +16,8 @@ public class Buyer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @Column(nullable = false)
+    private String role;
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -23,7 +26,7 @@ public class Buyer {
     private String email;
 
     @Column(nullable = false)
-    private Double balance;
+    private BigDecimal balance;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -35,7 +38,7 @@ public class Buyer {
     void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = createdAt;
-        if (balance == null) balance = 0.0;
+        if (balance == null) balance = BigDecimal.valueOf(0.0);
     }
 
     @PreUpdate

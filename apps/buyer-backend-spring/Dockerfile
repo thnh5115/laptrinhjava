@@ -1,23 +1,27 @@
-# =========================
-# Stage 1: Build
-# =========================
-FROM maven:3.9.9-eclipse-temurin-21 AS build
-
+# ---------- Build stage ----------
+FROM eclipse-temurin:21-jdk AS builder
 WORKDIR /workspace
-# copy toàn bộ monorepo để có parent + các module nội bộ
-COPY ../../ /workspace/
 
-# 1) Cài lib nội bộ java-common vào local repo của container
-RUN mvn -B -DskipTests -pl packages/java-common clean install
+# Copy POMs trước để cache dependency
+COPY pom.xml .
+COPY packages/java-common/pom.xml packages/java-common/pom.xml
+COPY apps/buyer-backend-spring/pom.xml apps/buyer-backend-spring/pom.xml
 
-# 2) Build buyer-backend-spring (kéo theo module phụ thuộc nếu cần)
-RUN mvn -B -DskipTests -pl apps/buyer-backend-spring -am clean package
+# Cài parent POM (nếu root là packaging=pom)
+RUN mvn -B -q -DskipTests -N install
 
-# =========================
-# Stage 2: Runtime
-# =========================
-FROM eclipse-temurin:21-jdk
+# Cài lib nội bộ java-common
+RUN mvn -B -q -DskipTests -pl packages/java-common clean install
+
+# Copy toàn bộ source
+COPY . .
+
+# Build buyer-backend-spring (kéo theo phụ thuộc cần thiết)
+RUN mvn -B -q -DskipTests -pl apps/buyer-backend-spring -am package
+
+# ---------- Runtime stage ----------
+FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /workspace/apps/buyer-backend-spring/target/*.jar app.jar
+COPY --from=builder /workspace/apps/buyer-backend-spring/target/*.jar app.jar
 EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]

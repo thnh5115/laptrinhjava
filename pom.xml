@@ -17,8 +17,6 @@
         <module>packages/java-common</module>
         <module>apps/admin-backend-spring</module>
         <module>apps/buyer-backend-spring</module>
-        <module>apps/cva-backend-spring</module>
-        <module>apps/owner-backend-spring</module>
     </modules>
 
     <properties>

@@ -10,11 +10,17 @@ import ccm.buyer.repository.BuyerRepository;
 import ccm.buyer.service.AuctionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
+<<<<<<< HEAD
+@Transactional
+=======
+>>>>>>> origin/main
 public class AuctionServiceImpl implements AuctionService {
 
   private final AuctionRepository auctionRepository;
@@ -22,32 +28,22 @@ public class AuctionServiceImpl implements AuctionService {
   private final BuyerRepository buyerRepository;
 
   @Override
-  public Bid placeBid(Long buyerId, Long auctionId, Double bidPrice) {
-    // Validate auction exists and is active
+  public Bid placeBid(Long auctionId, Long buyerId, BigDecimal amount) {
+
+    if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new IllegalArgumentException("Bid amount must be > 0");
+    }
+
     Auction auction = auctionRepository.findById(auctionId)
-        .orElseThrow(() -> new IllegalArgumentException("Auction not found: " + auctionId));
-    
-    // Validate buyer exists
-    Buyer buyer = buyerRepository.findById(buyerId)
-        .orElseThrow(() -> new IllegalArgumentException("Buyer not found: " + buyerId));
-    
-    // Validate bid price meets minimum requirements
-    Double minBidPrice = auction.getStartPrice();
-    Double stepPrice = auction.getStepPrice();
-    if (stepPrice != null && minBidPrice != null) {
-      minBidPrice += stepPrice;
-    }
-    
-    if (minBidPrice != null && bidPrice < minBidPrice) {
-      throw new IllegalArgumentException("Bid price too low. Minimum: " + minBidPrice);
-    }
-    
-    // Create and save bid
+        .orElseThrow(() -> new RuntimeException("Auction not found"));
+    Buyer buyer = buyerRepository.findByIdAndRole(buyerId, "BUYER")
+        .orElseThrow(() -> new RuntimeException("Buyer not found"));
+
     Bid bid = Bid.builder()
         .auction(auction)
         .buyer(buyer)
-        .amount(bidPrice)
-        .status(BidStatus.OPEN)
+        .amount(amount)
+        .status(BidStatus.OPEN) 
         .createdAt(LocalDateTime.now())
         .build();
     

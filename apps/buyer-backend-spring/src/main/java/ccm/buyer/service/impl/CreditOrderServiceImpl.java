@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.Locale;
 
 @Service
@@ -86,7 +87,7 @@ public class CreditOrderServiceImpl implements CreditOrderService {
         long total = orderRepo.findByBuyer_Id(buyerId, Pageable.unpaged()).getTotalElements();
         long pending = orderRepo.findByStatus(TrStatus.PENDING, Pageable.unpaged()).getTotalElements();
         long completed = orderRepo.findByStatus(TrStatus.COMPLETED, Pageable.unpaged()).getTotalElements();
-        double spent = 0.0;
+        BigDecimal spent = BigDecimal.valueOf(0.0);
         return BuyerDashboardResponse.builder()
                 .totalOrders(total)
                 .pendingTransactions(pending)
@@ -119,8 +120,8 @@ public class CreditOrderServiceImpl implements CreditOrderService {
         return CreditOrderResponse.builder()
                 .id(o.getId())
                 .buyerId(o.getBuyer() != null ? o.getBuyer().getId() : null)
-                .quantity(o.getCredits() != null ? o.getCredits() : 0)
-                .price(o.getPricePerUnit() != null ? o.getPricePerUnit() : 0.0)
+                .qty(o.getCredits() != null ? o.getCredits(): BigDecimal.ZERO)
+                .price(o.getPricePerUnit() != null ? o.getPricePerUnit(): BigDecimal.ZERO)
                 .status(o.getStatus())
                 .build();
     }

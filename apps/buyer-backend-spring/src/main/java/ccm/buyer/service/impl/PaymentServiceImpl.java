@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -19,7 +20,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public Payment processPayment(Long trId, String method, Double amount) {
+    public Payment processPayment(Long trId, String method, BigDecimal amount) {
         String ref = "PMT-" + UUID.randomUUID();
 
         if (repo.existsByRef(ref))
