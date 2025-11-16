@@ -53,7 +53,8 @@ springdoc:
 app:
   frontend:
     origin: ${FRONTEND_ORIGIN:http://localhost:3000}
-
-
-
-
+  security:
+    jwt:
+      # QUAN TRỌNG: Thay thế giá trị này bằng một key
+      # ngẫu nhiên, an toàn và dài ÍT NHẤT 32 KÝ TỰ.
+      secret: "gandmd-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256"
