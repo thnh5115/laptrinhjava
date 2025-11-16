@@ -14,21 +14,29 @@ COPY apps/cva-backend-spring/pom.xml apps/cva-backend-spring/
 COPY apps/owner-backend-spring/pom.xml apps/owner-backend-spring/
 COPY packages/java-common/src packages/java-common/src
 
+# Include admin backend sources needed for compilation
+COPY apps/admin-backend-spring/src apps/admin-backend-spring/src
+COPY apps/admin-backend-spring/lombok.config apps/admin-backend-spring/
+
 # Fix CRLF issues and ensure executable bit for mvnw
 RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
 
 # Build shared module
 RUN ./mvnw -pl packages/java-common -am install -DskipTests
 
-# Download dependencies
-RUN ./mvnw dependency:go-offline -B
+# Install admin backend (owner depends on its entities/repositories)
+# Skip Spring Boot repackage so dependency jar exposes compiled classes
+RUN ./mvnw -pl apps/admin-backend-spring -am install -DskipTests -Dspring-boot.repackage.skip=true
+
+# Download dependencies for owner service (uses installed admin artifact)
+RUN ./mvnw -pl apps/owner-backend-spring dependency:go-offline -B
 
 # Copy source code
 COPY apps/owner-backend-spring/src apps/owner-backend-spring/src
 COPY apps/owner-backend-spring/lombok.config apps/owner-backend-spring/
 
-# Build application
-RUN ./mvnw clean package -pl apps/owner-backend-spring -am -DskipTests
+# Build application (owner packaged as runnable Boot jar)
+RUN ./mvnw clean package -pl apps/owner-backend-spring -DskipTests
 
 # Stage 2: Runtime
 FROM eclipse-temurin:21-jre-alpine

@@ -157,6 +157,7 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <skip>${spring-boot.repackage.skip}</skip>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>

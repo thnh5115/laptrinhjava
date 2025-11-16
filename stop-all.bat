@@ -1,3 +1,19 @@
+@echo off
+setlocal EnableDelayedExpansion
+set "SELF=%~f0"
+set "MARKER=__PS_PAYLOAD__"
+for /f "delims=:" %%I in ('findstr /n /c:"%MARKER%" "%SELF%"') do set "PAYLOAD_LINE=%%I"
+if not defined PAYLOAD_LINE (
+    echo [ERROR] Unable to locate embedded PowerShell payload in %SELF%.
+    endlocal & exit /b 1
+)
+set /a START_INDEX=PAYLOAD_LINE
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$lines = Get-Content -LiteralPath '%SELF%'; $start = %START_INDEX%; $script = ($lines[$start..($lines.Length-1)] -join \"`n\"); & ([scriptblock]::Create($script)) @args"
+set "ERR=%ERRORLEVEL%"
+endlocal & exit /b %ERR%
+
+__PS_PAYLOAD__
 Write-Host "Stopping all projects..." -ForegroundColor Red
 
 function Stop-ProcessByPort {
@@ -26,7 +42,7 @@ Write-Host "Stopping Docker containers..." -ForegroundColor Cyan
 if (Test-Path "infra/docker/docker-compose.yml") {
     Push-Location "infra/docker"
     try {
-        docker-compose down
+        docker compose down
         Write-Host "Docker containers stopped successfully." -ForegroundColor Green
     } catch {
         Write-Host "Failed to stop Docker containers: $($_.Exception.Message)" -ForegroundColor Red

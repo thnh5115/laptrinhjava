@@ -1,3 +1,19 @@
+@echo off
+setlocal EnableDelayedExpansion
+set "SELF=%~f0"
+set "MARKER=__PS_PAYLOAD__"
+for /f "delims=:" %%I in ('findstr /n /c:"%MARKER%" "%SELF%"') do set "PAYLOAD_LINE=%%I"
+if not defined PAYLOAD_LINE (
+    echo [ERROR] Unable to locate embedded PowerShell payload in %SELF%.
+    endlocal & exit /b 1
+)
+set /a START_INDEX=PAYLOAD_LINE
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$lines = Get-Content -LiteralPath '%SELF%'; $start = %START_INDEX%; $script = ($lines[$start..($lines.Length-1)] -join \"`n\"); & ([scriptblock]::Create($script)) @args" --% %*
+set "ERR=%ERRORLEVEL%"
+endlocal & exit /b %ERR%
+
+__PS_PAYLOAD__
 param(
     [switch]$SkipAdmin,
     [switch]$SkipBuyer,
@@ -45,11 +61,10 @@ if (-not $env:JAVA_HOME) {
 
 $services = @()
 
-
 if (-not $SkipAdmin) {
     $services += @{
         Name = "Admin Backend"
-        Port = 8000
+        Port = 8080
         Path = "apps/admin-backend-spring"
         Command = "`$env:JAVA_HOME='$env:JAVA_HOME'; `$env:SPRING_PROFILES_ACTIVE='dev'; cd '$ProjectRoot'; .\mvnw.cmd -f apps/admin-backend-spring/pom.xml -DskipTests spring-boot:run"
     }
@@ -58,7 +73,7 @@ if (-not $SkipAdmin) {
 if (-not $SkipOwner) {
     $services += @{
         Name = "Owner Backend"
-        Port = 8001
+        Port = 8082
         Path = "apps/owner-backend-spring"
         Command = "`$env:JAVA_HOME='$env:JAVA_HOME'; `$env:SPRING_PROFILES_ACTIVE='dev'; cd '$ProjectRoot'; .\mvnw.cmd -f apps/owner-backend-spring/pom.xml -DskipTests spring-boot:run"
     }
@@ -67,7 +82,7 @@ if (-not $SkipOwner) {
 if (-not $SkipBuyer) {
     $services += @{
         Name = "Buyer Backend"
-        Port = 8002
+        Port = 8081
         Path = "apps/buyer-backend-spring"
         Command = "`$env:JAVA_HOME='$env:JAVA_HOME'; `$env:SPRING_PROFILES_ACTIVE='dev'; cd '$ProjectRoot'; .\mvnw.cmd -f apps/buyer-backend-spring/pom.xml -DskipTests spring-boot:run"
     }
@@ -76,7 +91,7 @@ if (-not $SkipBuyer) {
 if (-not $SkipCVA) {
     $services += @{
         Name = "CVA Backend"
-        Port = 8003
+        Port = 8083
         Path = "apps/cva-backend-spring"
         Command = "`$env:JAVA_HOME='$env:JAVA_HOME'; `$env:SPRING_PROFILES_ACTIVE='dev'; cd '$ProjectRoot'; .\mvnw.cmd -f apps/cva-backend-spring/pom.xml -DskipTests spring-boot:run"
     }
@@ -118,33 +133,17 @@ function Wait-ForService {
     if (-not $isReady) {
         Write-Host "`n  [WARN] $ServiceName did not respond after $MaxWaitSeconds seconds" -ForegroundColor Yellow
         Write-Host "  [INFO] Check the $ServiceName window for errors" -ForegroundColor Gray
-        $continue = Read-Host "  [INPUT] Continue anyway? (y/n)"
-        if ($continue -ne "y") {
-            Write-Host "  [ERROR] Startup cancelled by user" -ForegroundColor Red
-            exit 1
-        }
     }
-    
-    # Extra buffer time after health check passes
-    Start-Sleep -Seconds 3
 }
 
-# Start services one by one in order
-$stepNumber = 1
-$totalSteps = $services.Count
-
 foreach ($service in $services) {
-    Write-Host "`n================================================================" -ForegroundColor Cyan
-    Write-Host "  [STEP $stepNumber/$totalSteps] Starting $($service.Name)" -ForegroundColor Cyan
-    Write-Host "================================================================" -ForegroundColor Cyan
+    Write-Host "`n[STEP] Launching $($service.Name) ..." -ForegroundColor Cyan
+    Write-Host "  [INFO] Working directory: $ProjectRoot" -ForegroundColor Gray
+    Write-Host "  [INFO] Running: $($service.Command)" -ForegroundColor Gray
     
+    Start-Process powershell -ArgumentList "-NoExit","-Command",$service.Command
     Write-Host "  [OK] Launching $($service.Name) on port $($service.Port)..." -ForegroundColor Green
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", $service.Command
-    
-    # Wait for this service to be ready before starting the next one
     Wait-ForService -ServiceName $service.Name -Port $service.Port -MaxWaitSeconds 120
-    
-    $stepNumber++
 }
 
 Write-Host "`n================================================================" -ForegroundColor Green
@@ -158,19 +157,23 @@ if (-not $SkipFrontend) {
         Write-Host "  [OK] node_modules found" -ForegroundColor Green
     } else {
         Write-Host "  [WARN] node_modules not found. Installing dependencies..." -ForegroundColor Yellow
-        Set-Location "$ProjectRoot\apps\web-portal-next"
-        pnpm install --no-frozen-lockfile
-        Set-Location $ProjectRoot
+        Push-Location "$ProjectRoot\apps\web-portal-next"
+        try {
+            if (Test-Path "$ProjectRoot\package-lock.json" -or (Get-Command npm -ErrorAction SilentlyContinue)) {
+                npm install --legacy-peer-deps
+            } elseif (Get-Command pnpm -ErrorAction SilentlyContinue) {
+                pnpm install --no-frozen-lockfile
+            } else {
+                npm install --legacy-peer-deps
+            }
+        } finally {
+            Pop-Location
+        }
     }
     
-    if (Test-Path "$ProjectRoot\apps\web-portal-next\node_modules\.bin\next.cmd") {
-        Write-Host "  [OK] Using local Next.js from node_modules" -ForegroundColor Green
-        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$ProjectRoot\apps\web-portal-next'; .\node_modules\.bin\next.cmd dev"
-    } else {
-        Write-Host "  [WARN] Local Next.js not found. Using global or npx..." -ForegroundColor Yellow
-        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$ProjectRoot\apps\web-portal-next'; npx next dev"
-    }
-    
+    $frontendCmd = "cd '$ProjectRoot\apps\web-portal-next'; npm run dev"
+    Write-Host "  [INFO] Running: $frontendCmd" -ForegroundColor Gray
+    Start-Process powershell -ArgumentList "-NoExit","-Command",$frontendCmd
     Write-Host "  [OK] Frontend starting on port 3000..." -ForegroundColor Green
 }
 
@@ -213,7 +216,7 @@ Write-Host "  Stop all: Get-Process -Name 'java','node' | Stop-Process -Force" -
 Write-Host "  View logs: Check the PowerShell windows that opened" -ForegroundColor White
 
 Write-Host "`n[STEP] Startup Options:" -ForegroundColor Cyan
-Write-Host "  .\quick-start.ps1                  # Start all services" -ForegroundColor White
-Write-Host "  .\quick-start.ps1 -SkipBuyer       # Skip Buyer service" -ForegroundColor White
-Write-Host "  .\quick-start.ps1 -SkipFrontend    # Backend only" -ForegroundColor White
+Write-Host "  .\start.bat                  # Start all services" -ForegroundColor White
+Write-Host "  .\start.bat -SkipBuyer       # Skip Buyer service" -ForegroundColor White
+Write-Host "  .\start.bat -SkipFrontend    # Backend only" -ForegroundColor White
 Write-Host ""
