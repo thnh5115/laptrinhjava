@@ -1,5 +1,5 @@
-import { LoginForm } from "@/components/auth/login-form"
-import { Leaf } from "lucide-react"
+import { LoginForm } from "@/components/auth/login-form";
+import { Leaf } from "lucide-react";
 
 export default function LoginPage() {
   return (
@@ -12,10 +12,12 @@ export default function LoginPage() {
             </div>
             <h1 className="text-2xl font-bold text-foreground">CarbonCredit</h1>
           </div>
-          <p className="text-muted-foreground text-center">Trade carbon credits from your EV journeys</p>
+          <p className="text-muted-foreground text-center">
+            Trade carbon credits from your EV journeys
+          </p>
         </div>
         <LoginForm />
       </div>
     </div>
-  )
+  );
 }

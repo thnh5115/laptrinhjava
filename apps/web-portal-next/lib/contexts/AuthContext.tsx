@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Authentication Context & Provider
@@ -6,12 +6,20 @@
  * CRITICAL: Must save token BEFORE calling /me
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import axiosClient from '@/lib/api/axiosClient';
-import authService from '@/lib/auth/authService';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from "react";
+import { useRouter } from "next/navigation";
+import axiosClient from "@/lib/api/axiosClient";
+import authService from "@/lib/auth/authService";
 
-type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
+type AuthStatus = "idle" | "loading" | "authenticated" | "unauthenticated";
 
 interface User {
   id: number;
@@ -49,7 +57,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [status, setStatus] = useState<AuthStatus>('idle');
+  const [status, setStatus] = useState<AuthStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -60,175 +68,214 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const fetchMe = useCallback(async () => {
     const token = authService.getToken();
     if (!token) {
-      console.log('[AuthContext] No token found, setting unauthenticated');
-      setStatus('unauthenticated');
+      console.log("[AuthContext] No token found, setting unauthenticated");
+      setStatus("unauthenticated");
       setUser(null);
       setAccessToken(null);
       return;
     }
 
-    setStatus('loading');
+    setStatus("loading");
     try {
-      const res = await axiosClient.get('/auth/me');
+      const res = await axiosClient.get("/auth/me");
       setUser(res.data);
       setAccessToken(token);
-      setStatus('authenticated');
+      setStatus("authenticated");
       setError(null);
-      console.log('[AuthContext] User fetched:', res.data.email, 'role:', res.data.role);
+      console.log(
+        "[AuthContext] User fetched:",
+        res.data.email,
+        "role:",
+        res.data.role
+      );
     } catch (err: any) {
       const statusCode = err?.response?.status;
-      console.error('[AuthContext] fetchMe failed:', statusCode, err?.response?.data || err.message);
-      
+      console.error(
+        "[AuthContext] fetchMe failed:",
+        statusCode,
+        err?.response?.data || err.message
+      );
+
       // Only clear tokens on 401 (unauthorized)
       if (statusCode === 401) {
-        console.warn('[AuthContext] 401 Unauthorized - clearing tokens');
+        console.warn("[AuthContext] 401 Unauthorized - clearing tokens");
         authService.clearAuth();
         setUser(null);
         setAccessToken(null);
-        setStatus('unauthenticated');
+        setStatus("unauthenticated");
       } else {
         // Network error or 5xx - keep tokens, just set error
-        setError('Failed to fetch user information. Please try again.');
-        setStatus('unauthenticated');
+        setError("Failed to fetch user information. Please try again.");
+        setStatus("unauthenticated");
       }
     }
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    setStatus('loading');
-    setError(null);
-    
-    try {
-      console.log('[AuthContext] Attempting login for:', email);
-      const res = await axiosClient.post<LoginResponse>('/auth/login', { email, password });
-      
-      const { accessToken, refreshToken, user: userData } = res.data;
-
-      if (!accessToken || !refreshToken) {
-        throw new Error('Invalid response from server: missing tokens');
-      }
-
-      console.log('[AuthContext] Login successful:', userData.email, 'role:', userData.role);
-
-      // ✅ CRITICAL: Save tokens FIRST before calling /me or any other API
-      authService.setAuthData(accessToken, refreshToken, userData);
-
-      // Update state
-      setAccessToken(accessToken);
-      setUser(userData);
-      setStatus('authenticated');
+  const login = useCallback(
+    async (email: string, password: string) => {
+      setStatus("loading");
       setError(null);
 
-      console.log('[AuthContext] Tokens saved to localStorage, redirecting...');
-      
-      // Redirect based on role
-      if (userData.role === 'ADMIN') {
-        router.push('/admin/dashboard');
-      } else if (userData.role === 'BUYER') {
-        router.push('/buyer/dashboard');
-      } else if (userData.role === 'OWNER') {
-        router.push('/owner/dashboard');
-      } else if (userData.role === 'CVA') {
-        router.push('/cva/dashboard');
-      } else {
-        router.push('/login');
-        throw new Error('Unknown role: ' + userData.role);
-      }
-    } catch (err: any) {
-      const statusCode = err?.response?.status;
-      const errorData = err?.response?.data;
-      const errorMessage = errorData?.message || err?.message || 'Login failed';
-      
-      console.error('[AuthContext] Login failed:', statusCode, errorMessage, errorData);
-      
-      // Set user-friendly error message based on status code
-      if (statusCode === 401) {
-        setError('Email hoặc mật khẩu không đúng');
-      } else if (statusCode === 400) {
-        setError(errorMessage);
-      } else if (statusCode === 403) {
-        setError('Tài khoản đã bị khóa hoặc vô hiệu hóa');
-      } else if (!statusCode) {
-        setError('Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet.');
-      } else {
-        setError('Đăng nhập thất bại. Vui lòng thử lại sau.');
-      }
+      try {
+        console.log("[AuthContext] Attempting login for:", email);
+        const res = await axiosClient.post<LoginResponse>("/auth/login", {
+          email,
+          password,
+        });
 
-      setUser(null);
-      setAccessToken(null);
-      setStatus('unauthenticated');
-      
-      throw err;
-    }
-  }, [router]);
+        const { accessToken, refreshToken, user: userData } = res.data;
+
+        if (!accessToken || !refreshToken) {
+          throw new Error("Invalid response from server: missing tokens");
+        }
+
+        console.log(
+          "[AuthContext] Login successful:",
+          userData.email,
+          "role:",
+          userData.role
+        );
+
+        // ✅ CRITICAL: Save tokens FIRST before calling /me or any other API
+        authService.setAuthData(accessToken, refreshToken, userData);
+
+        // Update state
+        setAccessToken(accessToken);
+        setUser(userData);
+        setStatus("authenticated");
+        setError(null);
+
+        console.log(
+          "[AuthContext] Tokens saved to localStorage, redirecting..."
+        );
+
+        // Redirect based on role
+        if (userData.role === "ADMIN") {
+          router.push("/admin/dashboard");
+        } else if (userData.role === "BUYER") {
+          router.push("/buyer/dashboard");
+        } else if (userData.role === "EV_OWNER") {
+          router.push("/owner/dashboard");
+        } else if (userData.role === "AUDITOR") {
+          router.push("/cva/dashboard");
+        } else {
+          router.push("/login");
+          throw new Error("Unknown role: " + userData.role);
+        }
+      } catch (err: any) {
+        const statusCode = err?.response?.status;
+        const errorData = err?.response?.data;
+        const errorMessage =
+          errorData?.message || err?.message || "Login failed";
+
+        console.error(
+          "[AuthContext] Login failed:",
+          statusCode,
+          errorMessage,
+          errorData
+        );
+
+        // Set user-friendly error message based on status code
+        if (statusCode === 401) {
+          setError("Email hoặc mật khẩu không đúng");
+        } else if (statusCode === 400) {
+          setError(errorMessage);
+        } else if (statusCode === 403) {
+          setError("Tài khoản đã bị khóa hoặc vô hiệu hóa");
+        } else if (!statusCode) {
+          setError("Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet.");
+        } else {
+          setError("Đăng nhập thất bại. Vui lòng thử lại sau.");
+        }
+
+        setUser(null);
+        setAccessToken(null);
+        setStatus("unauthenticated");
+
+        throw err;
+      }
+    },
+    [router]
+  );
 
   const logout = useCallback(async () => {
-    console.log('[AuthContext] Logging out...');
-    
+    console.log("[AuthContext] Logging out...");
+
     try {
       // Call backend logout to revoke refresh tokens
-      await axiosClient.post('/auth/logout');
+      await axiosClient.post("/auth/logout");
     } catch (err) {
-      console.warn('[AuthContext] Logout API call failed:', err);
+      console.warn("[AuthContext] Logout API call failed:", err);
       // Ignore logout errors - still clear local state
     }
 
     // Clear tokens from localStorage
     authService.clearAuth();
-    
+
     // Clear state
     setUser(null);
     setAccessToken(null);
-    setStatus('unauthenticated');
+    setStatus("unauthenticated");
     setError(null);
 
-    console.log('[AuthContext] Logged out, redirecting to /login');
-    router.push('/login');
+    console.log("[AuthContext] Logged out, redirecting to /login");
+    router.push("/login");
   }, [router]);
 
   // Auto-check authentication on mount (run only ONCE)
   useEffect(() => {
     const token = authService.getToken();
     if (token) {
-      console.log('[AuthContext] Token found on mount, fetching user...');
-      setStatus('loading');
-      axiosClient.get('/auth/me')
+      console.log("[AuthContext] Token found on mount, fetching user...");
+      setStatus("loading");
+      axiosClient
+        .get("/auth/me")
         .then((res) => {
           setUser(res.data);
           setAccessToken(token);
-          setStatus('authenticated');
+          setStatus("authenticated");
           setError(null);
-          console.log('[AuthContext] Auto-login successful:', res.data.email, 'role:', res.data.role);
+          console.log(
+            "[AuthContext] Auto-login successful:",
+            res.data.email,
+            "role:",
+            res.data.role
+          );
         })
         .catch((err: any) => {
           const statusCode = err?.response?.status;
-          console.error('[AuthContext] Auto-login failed:', statusCode);
-          
+          console.error("[AuthContext] Auto-login failed:", statusCode);
+
           if (statusCode === 401) {
             authService.clearAuth();
           }
-          
+
           setUser(null);
           setAccessToken(null);
-          setStatus('unauthenticated');
+          setStatus("unauthenticated");
         });
     } else {
-      console.log('[AuthContext] No token found on mount');
-      setStatus('unauthenticated');
+      console.log("[AuthContext] No token found on mount");
+      setStatus("unauthenticated");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once on mount
 
   const value = useMemo(
-    () => ({ user, accessToken, status, error, login, logout, fetchMe, clearError }),
+    () => ({
+      user,
+      accessToken,
+      status,
+      error,
+      login,
+      logout,
+      fetchMe,
+      clearError,
+    }),
     [user, accessToken, status, error, login, logout, fetchMe, clearError]
   );
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 /**
@@ -238,11 +285,10 @@ export function useAuth() {
   const context = useContext(AuthContext);
 
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
 
   return context;
 }
 
 export default AuthContext;
-
