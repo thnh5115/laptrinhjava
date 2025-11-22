@@ -1,11 +1,14 @@
 # ---------- Build stage ----------
-FROM eclipse-temurin:21-jdk AS builder
+FROM maven:3.9.4-eclipse-temurin-21 AS builder
 WORKDIR /workspace
 
 # Copy POMs trước để cache dependency
 COPY pom.xml .
 COPY packages/java-common/pom.xml packages/java-common/pom.xml
 COPY apps/buyer-backend-spring/pom.xml apps/buyer-backend-spring/pom.xml
+COPY apps/admin-backend-spring/pom.xml apps/admin-backend-spring/pom.xml
+COPY apps/cva-backend-spring/pom.xml apps/cva-backend-spring/pom.xml
+COPY apps/owner-backend-spring/pom.xml apps/owner-backend-spring/pom.xml
 
 # Cài parent POM (nếu root là packaging=pom)
 RUN mvn -B -q -DskipTests -N install

@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ccm.buyer.dto.response.BuyerDashboardResponse;
+import ccm.buyer.service.impl.BuyerDashboardServiceImpl;
 
 import java.util.List;
 
@@ -18,6 +20,7 @@ import java.util.List;
 public class TransactionController {
 
   private final TransactionService transactionService;
+  private final BuyerDashboardServiceImpl dashboardService;
 
   @GetMapping
   public ResponseEntity<List<TransactionResponse>> list(@RequestParam(required = false) Long buyerId) {
@@ -37,4 +40,9 @@ public class TransactionController {
     TrStatus status = (req.getStatus() == null) ? TrStatus.PENDING : req.getStatus();
     return ResponseEntity.ok(transactionService.updateStatus(id, status));
   }
+
+  @GetMapping("/dashboard/{buyerId}")
+    public ResponseEntity<BuyerDashboardResponse> getDashboard(@PathVariable Long buyerId) {
+        return ResponseEntity.ok(dashboardService.getDashboardStats(buyerId));
+    }
 }

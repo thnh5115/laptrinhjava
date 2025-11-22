@@ -9,4 +9,5 @@ public interface TransactionService {
   List<TransactionResponse> list(Long buyerId);
   TransactionResponse create(CreateTransactionRequest req);
   TransactionResponse updateStatus(Long id, TrStatus status);
+  
 }

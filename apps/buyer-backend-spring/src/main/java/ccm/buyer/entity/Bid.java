@@ -19,12 +19,12 @@ public class Bid {
   @JoinColumn(name = "auction_id", nullable = false)
   private Auction auction;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  
   @JoinColumn(name = "buyer_id", nullable = false)
-  private Buyer buyer;
+  private Long buyerId;
 
-  @Column(precision = 19, scale = 4)
-  private BigDecimal amount;
+ @Column(name = "bid_price", nullable = false) // <--- Ánh xạ biến 'amount' vào cột 'bid_price'
+    private BigDecimal amount;
 
   @Enumerated(EnumType.STRING)
   private BidStatus status;

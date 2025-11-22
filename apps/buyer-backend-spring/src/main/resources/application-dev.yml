@@ -1,9 +1,9 @@
 ﻿spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3307/carbon_buyer?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: root
-    password: 123456
+    password: 632005
 
   jpa:
     hibernate:
@@ -13,7 +13,12 @@
       hibernate:
         format_sql: true
   flyway:
-    enabled: true
+    enabled: false
     clean-disabled: false
     locations: classpath:db/migration
     connect-retries: 10
+app:
+  security:
+    jwt:
+      secret: my-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256
+      expiration-ms: 900000
