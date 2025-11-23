@@ -47,8 +47,8 @@ WORKDIR /app
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
 
-# Copy JAR from builder
-COPY --from=builder /workspace/apps/owner-backend-spring/target/*.jar app.jar
+# Copy JAR from builder (only the repackaged Boot jar)
+COPY --from=builder /workspace/apps/owner-backend-spring/target/owner-backend-spring-*.jar /app/app.jar
 
 # Change ownership
 RUN chown -R appuser:appgroup /app

@@ -21,8 +21,18 @@ import axiosClient from './axiosClient';
  * Example: http://localhost:8080/api → http://localhost:8080
  */
 const getActuatorBaseUrl = (): string => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
-  return apiUrl.replace('/api', '');
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    throw new Error(
+      "[actuator api] Missing NEXT_PUBLIC_API_URL. Set it to the main backend base (e.g., http://localhost:8080/api or http://admin-backend:8080/api)."
+    );
+  }
+  if (!apiUrl.endsWith("/api")) {
+    throw new Error(
+      `[actuator api] NEXT_PUBLIC_API_URL must end with '/api' to derive actuator base. Current value: ${apiUrl}`
+    );
+  }
+  return apiUrl.replace(/\/api$/, '');
 };
 
 // ==================== Type Definitions ====================

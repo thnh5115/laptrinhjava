@@ -55,7 +55,15 @@ export interface VerificationQuery {
 // Cấu hình URL riêng cho Microservice CVA (Cổng 8183)
 // Lưu ý: Backend Java của bạn mapping là @RequestMapping("/api/cva/requests")
 // Nên BASE_URL chỉ cần trỏ đến gốc /api/cva
-const CVA_BASE_URL = process.env.NEXT_PUBLIC_CVA_API_URL || "http://localhost:8183/api/cva";
+const CVA_BASE_URL = (() => {
+  const url = process.env.NEXT_PUBLIC_CVA_API_URL;
+  if (!url) {
+    throw new Error(
+      "[cva api] Missing NEXT_PUBLIC_CVA_API_URL. Set it to CVA service base (e.g., http://localhost:8083/api/cva or http://cva-backend:8083/api/cva)."
+    );
+  }
+  return url;
+})();
 
 // Helper để override Base URL nhưng vẫn giữ Interceptor của axiosClient (để lấy Token)
 const requestCva = {

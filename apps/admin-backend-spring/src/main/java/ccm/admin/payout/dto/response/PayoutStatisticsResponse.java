@@ -9,13 +9,15 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PayoutStatisticsResponse {
-    private Long totalPayouts;
-    private Long pendingPayouts;
-    private Long approvedPayouts;
-    private Long rejectedPayouts;
-    private Long completedPayouts;
-    private BigDecimal totalAmountRequested;
-    private BigDecimal totalAmountApproved;
-    private BigDecimal totalAmountCompleted;
-    private Double approvalRate;  // (approved / total) * 100
+    private Long totalCount;
+    private Long pendingCount;
+    private Long approvedCount;
+    private Long rejectedCount;
+    private Long completedCount;
+    private BigDecimal totalAmount;
+    private BigDecimal pendingAmount;
+    private BigDecimal approvedAmount;
+    private BigDecimal rejectedAmount;
+    private BigDecimal completedAmount;
+    private Double approvalRate;  // (approved+completed / total) * 100
 }

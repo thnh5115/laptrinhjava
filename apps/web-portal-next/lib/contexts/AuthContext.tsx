@@ -90,9 +90,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       );
     } catch (err: any) {
       const statusCode = err?.response?.status;
+      const isNetwork = !err?.response;
       console.error(
         "[AuthContext] fetchMe failed:",
-        statusCode,
+        statusCode ?? "NET",
         err?.response?.data || err.message
       );
 
@@ -103,8 +104,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(null);
         setAccessToken(null);
         setStatus("unauthenticated");
+      } else if (isNetwork) {
+        setError("Network error while fetching user. Please check connectivity and CORS.");
+        setStatus("unauthenticated");
       } else {
-        // Network error or 5xx - keep tokens, just set error
+        // Other HTTP errors
         setError("Failed to fetch user information. Please try again.");
         setStatus("unauthenticated");
       }

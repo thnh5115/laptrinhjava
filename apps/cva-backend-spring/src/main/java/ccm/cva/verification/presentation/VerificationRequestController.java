@@ -17,10 +17,8 @@ import ccm.cva.verification.presentation.mapper.VerificationRequestMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -36,9 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.CrossOrigin;
 
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true") // <--- THÊM DÒNG NÀY
 @RestController
 @RequestMapping("/api/cva/requests")
 @Tag(name = "CVA Requests", description = "Verification lifecycle management")
@@ -140,7 +136,6 @@ public class VerificationRequestController {
             @RequestHeader(value = "X-Correlation-Id", required = false) String correlationId,
             @Valid @RequestBody RejectVerificationRequestPayload payload
     ) {
-        // correlationId reserved for future audit pipeline
         RejectVerificationRequestCommand command = new RejectVerificationRequestCommand(
             payload.verifierId(),
             payload.reason()

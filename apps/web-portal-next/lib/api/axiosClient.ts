@@ -5,8 +5,17 @@ import axios, {
 } from "axios";
 import authService from "@/lib/auth/authService";
 
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+if (!apiBaseUrl) {
+  throw new Error(
+    '[axiosClient] Missing NEXT_PUBLIC_API_URL. Set it to the correct backend base URL (e.g., http://localhost:8080/api or http://admin-backend:8080/api in Docker).'
+  );
+}
+
 const axiosClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180/api",
+  baseURL: apiBaseUrl,
+  // Tokens are sent via Authorization header; keep cookies off unless explicitly enabled.
   withCredentials: false,
   timeout: 30000,
 });
@@ -37,10 +46,17 @@ axiosClient.interceptors.response.use(
     const url = originalRequest?.url;
 
     // Compact error logging
+    // Distinguish pure network issues (no response) from HTTP errors
+    const isNetworkError = !err.response;
+    const resolvedBase = err.config?.baseURL || apiBaseUrl;
+    const fullUrl = url?.startsWith("http") ? url : `${resolvedBase ?? ""}${url ?? ""}`;
     const errorMsg =
-      data?.message || data?.error || err.message || "Unknown error";
+      data?.message ||
+      data?.error ||
+      (isNetworkError ? "Network error (connection/CORS failed)" : err.message) ||
+      "Unknown error";
     console.error(
-      `[API ERROR] ${status || "NET"} ${method} ${url} ${errorMsg}`
+      `[API ERROR] base=${resolvedBase} fullUrl=${fullUrl} status=${status || "NET"} method=${method} msg=${errorMsg}`
     );
 
     // Don't retry login/register/refresh requests

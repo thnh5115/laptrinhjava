@@ -157,6 +157,8 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <!-- Keep the plain jar as the main artifact for other modules (owner-backend depends on it) -->
+                    <classifier>boot</classifier>
                     <skip>${spring-boot.repackage.skip}</skip>
                     <excludes>
                         <exclude>

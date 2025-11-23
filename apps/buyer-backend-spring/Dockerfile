@@ -1,30 +1,49 @@
-# ---------- Build stage ----------
-FROM maven:3.9.4-eclipse-temurin-21 AS builder
+# Stage 1: Build
+FROM eclipse-temurin:21-jdk-alpine AS builder
+
 WORKDIR /workspace
 
-# Copy POMs trước để cache dependency
+COPY mvnw .
+COPY .mvn .mvn
 COPY pom.xml .
-COPY packages/java-common/pom.xml packages/java-common/pom.xml
-COPY apps/buyer-backend-spring/pom.xml apps/buyer-backend-spring/pom.xml
-COPY apps/admin-backend-spring/pom.xml apps/admin-backend-spring/pom.xml
-COPY apps/cva-backend-spring/pom.xml apps/cva-backend-spring/pom.xml
-COPY apps/owner-backend-spring/pom.xml apps/owner-backend-spring/pom.xml
+COPY packages/java-common/pom.xml packages/java-common/
+COPY apps/admin-backend-spring/pom.xml apps/admin-backend-spring/
+COPY apps/buyer-backend-spring/pom.xml apps/buyer-backend-spring/
+COPY apps/cva-backend-spring/pom.xml apps/cva-backend-spring/
+COPY apps/owner-backend-spring/pom.xml apps/owner-backend-spring/
 
-# Cài parent POM (nếu root là packaging=pom)
-RUN mvn -B -q -DskipTests -N install
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
 
-# Cài lib nội bộ java-common
-RUN mvn -B -q -DskipTests -pl packages/java-common clean install
+# Build shared modules needed for buyer
+COPY packages/java-common/src packages/java-common/src
+RUN ./mvnw -pl packages/java-common -am install -DskipTests
 
-# Copy toàn bộ source
-COPY . .
+# Pre-download buyer dependencies
+RUN ./mvnw -pl apps/buyer-backend-spring -am dependency:go-offline -B
 
-# Build buyer-backend-spring (kéo theo phụ thuộc cần thiết)
-RUN mvn -B -q -DskipTests -pl apps/buyer-backend-spring -am package
+# Copy buyer sources
+COPY apps/buyer-backend-spring/src apps/buyer-backend-spring/src
 
-# ---------- Runtime stage ----------
-FROM eclipse-temurin:21-jre
+# Build buyer backend
+RUN ./mvnw clean package -pl apps/buyer-backend-spring -am -DskipTests
+
+# Stage 2: Runtime
+FROM eclipse-temurin:21-jre-alpine
+
 WORKDIR /app
-COPY --from=builder /workspace/apps/buyer-backend-spring/target/*.jar app.jar
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+COPY --from=builder /workspace/apps/buyer-backend-spring/target/buyer-backend-spring-*.jar /app/app.jar
+
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
 EXPOSE 8081
-ENTRYPOINT ["java","-jar","app.jar"]
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8081/actuator/health || exit 1
+
+ENTRYPOINT ["java","-jar","/app/app.jar"]

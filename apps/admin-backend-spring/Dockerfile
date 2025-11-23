@@ -44,8 +44,8 @@ WORKDIR /app
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
 
-# Copy JAR from builder
-COPY --from=builder /workspace/apps/admin-backend-spring/target/*.jar app.jar
+# Copy JAR from builder (only the repackaged Boot jar with classifier)
+COPY --from=builder /workspace/apps/admin-backend-spring/target/admin-backend-spring-*-boot.jar /app/app.jar
 COPY --from=builder /workspace/apps/admin-backend-spring/src/main/resources/db/migration /app/db/migration
 
 # Change ownership

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton"
 import { Wallet, TrendingUp, TrendingDown, DollarSign, AlertCircle } from "lucide-react"
 import { getKpis, getTransactionTrends, SystemKpi, TransactionTrend } from "@/lib/api/admin-analytics"
+import { getPayoutStatistics, PayoutStatisticsResponse } from "@/lib/api/admin-payouts"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -12,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 export function FinanceOverview() {
   const [kpis, setKpis] = useState<SystemKpi | null>(null)
   const [trends, setTrends] = useState<TransactionTrend | null>(null)
+  const [payoutStats, setPayoutStats] = useState<PayoutStatisticsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -21,12 +23,14 @@ export function FinanceOverview() {
       setError(null)
       try {
         const currentYear = new Date().getFullYear()
-        const [kpisData, trendsData] = await Promise.all([
+        const [kpisData, trendsData, payoutData] = await Promise.all([
           getKpis(),
           getTransactionTrends(currentYear),
+          getPayoutStatistics(),
         ])
         setKpis(kpisData)
         setTrends(trendsData)
+        setPayoutStats(payoutData)
       } catch (err: any) {
         console.error("Failed to fetch finance overview:", err)
         setError(err?.response?.data?.message || "Failed to load finance data")
@@ -54,7 +58,7 @@ export function FinanceOverview() {
 
   // Calculate platform metrics
   const platformFees = kpis ? kpis.totalRevenue * 0.05 : 0
-  const pendingPayouts = 0 // TODO: Add payout API
+  const pendingPayouts = payoutStats?.pendingAmount ?? 0
   const platformBalance = platformFees - pendingPayouts
 
   if (loading) {

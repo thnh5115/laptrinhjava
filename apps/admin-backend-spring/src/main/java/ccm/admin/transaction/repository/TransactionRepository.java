@@ -19,12 +19,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     
     long countByStatus(TransactionStatus status);
     
+    @Query("SELECT COALESCE(SUM(t.totalPrice), 0) FROM Transaction t WHERE t.status IN :statuses")
+    BigDecimal sumTotalAmountByStatuses(@Param("statuses") List<TransactionStatus> statuses);
+    
     @Query(value = "SELECT COALESCE(SUM(total_amount), 0) FROM transactions WHERE status = :status", nativeQuery = true)
     BigDecimal sumTotalAmountByStatus(@Param("status") String status);
     
     
     default double calculateApprovedRevenue() {
-        BigDecimal total = sumTotalAmountByStatus(TransactionStatus.APPROVED.name());
+        BigDecimal total = sumTotalAmountByStatuses(List.of(TransactionStatus.APPROVED, TransactionStatus.COMPLETED));
         return total != null ? total.doubleValue() : 0.0;
     }
     
@@ -33,7 +36,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
             SELECT 
                 MONTH(created_at)   AS month,
                 COUNT(*)            AS transactionCount,
-                COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN total_amount ELSE 0 END), 0) AS approvedRevenue
+                COALESCE(SUM(CASE WHEN status IN ('APPROVED','COMPLETED') THEN total_amount ELSE 0 END), 0) AS approvedRevenue
             FROM transactions
             WHERE YEAR(created_at) = :year
             GROUP BY MONTH(created_at)

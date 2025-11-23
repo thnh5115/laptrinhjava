@@ -394,19 +394,19 @@ CREATE TABLE IF NOT EXISTS verification_requests (
     INDEX idx_verification_requests_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Legacy table: credit_issuances (from CVA module)
 CREATE TABLE IF NOT EXISTS credit_issuances (
-    id BINARY(16) PRIMARY KEY,
-    request_id BINARY(16) NOT NULL,
-    owner_id BINARY(16) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    request_id BIGINT NOT NULL,
+    owner_id BIGINT NOT NULL,
     co2_reduced_kg DECIMAL(18, 6) NOT NULL,
     credits_raw DECIMAL(18, 6) NOT NULL,
     credits_rounded DECIMAL(18, 2) NOT NULL,
     idempotency_key VARCHAR(100) NOT NULL,
     correlation_id VARCHAR(100) NULL,
-    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_credit_issuances_request FOREIGN KEY (request_id) REFERENCES verification_requests(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_credit_issuances_request FOREIGN KEY (request_id) REFERENCES journeys(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_credit_issuances_owner FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT uk_credit_issuances_request UNIQUE (request_id),
     CONSTRAINT uk_credit_issuances_idempotency UNIQUE (idempotency_key),
     INDEX idx_credit_issuances_owner (owner_id),

@@ -8,7 +8,6 @@ npm-debug.log*
 
 # Lock file (tuỳ bạn muốn giữ gì)
 yarn.lock
-pnpm-lock.yaml
 
 # Node modules (nhưng KHÔNG chặn nguyên thư mục apps)
 node_modules
@@ -17,3 +16,6 @@ node_modules
 # Next build output
 **/.next
 **/dist
+
+# Maven build output
+**/target

@@ -42,7 +42,8 @@ public class ReportServiceImpl implements ReportService {
         
         
         long totalTransactions = transactionRepository.count();
-        long approvedTransactions = transactionRepository.countByStatus(TransactionStatus.APPROVED);
+        long approvedTransactions = transactionRepository.countByStatus(TransactionStatus.APPROVED)
+                + transactionRepository.countByStatus(TransactionStatus.COMPLETED);
         long rejectedTransactions = transactionRepository.countByStatus(TransactionStatus.REJECTED);
         long pendingTransactions = transactionRepository.countByStatus(TransactionStatus.PENDING);
         

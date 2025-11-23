@@ -1,9 +1,9 @@
-﻿spring:
+spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: root
-    password: 632005
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
 
   jpa:
     hibernate:
@@ -13,12 +13,15 @@
       hibernate:
         format_sql: true
   flyway:
-    enabled: false
+    enabled: true
     clean-disabled: false
     locations: classpath:db/migration
     connect-retries: 10
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    user: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
 app:
   security:
     jwt:
-      secret: my-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256
-      expiration-ms: 900000
+      secret: ${JWT_SECRET:my-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256}
+      expiration-ms: ${JWT_EXPIRATION_MS:900000}

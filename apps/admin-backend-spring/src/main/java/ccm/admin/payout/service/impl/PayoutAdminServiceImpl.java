@@ -89,20 +89,24 @@ public class PayoutAdminServiceImpl implements PayoutAdminService {
         long completed = payoutRepository.countByStatus(PayoutStatus.COMPLETED);
 
         BigDecimal totalAmount = payoutRepository.calculateTotalAmountRequested();
+        BigDecimal pendingAmount = payoutRepository.calculateTotalAmountByStatus(PayoutStatus.PENDING);
         BigDecimal approvedAmount = payoutRepository.calculateTotalAmountByStatus(PayoutStatus.APPROVED);
+        BigDecimal rejectedAmount = payoutRepository.calculateTotalAmountByStatus(PayoutStatus.REJECTED);
         BigDecimal completedAmount = payoutRepository.calculateTotalAmountByStatus(PayoutStatus.COMPLETED);
 
         double approvalRate = total > 0 ? ((double) (approved + completed) / total) * 100.0 : 0.0;
 
         return PayoutStatisticsResponse.builder()
-                .totalPayouts(total)
-                .pendingPayouts(pending)
-                .approvedPayouts(approved)
-                .rejectedPayouts(rejected)
-                .completedPayouts(completed)
-                .totalAmountRequested(totalAmount)
-                .totalAmountApproved(approvedAmount)
-                .totalAmountCompleted(completedAmount)
+                .totalCount(total)
+                .pendingCount(pending)
+                .approvedCount(approved)
+                .rejectedCount(rejected)
+                .completedCount(completed)
+                .totalAmount(totalAmount)
+                .pendingAmount(pendingAmount)
+                .approvedAmount(approvedAmount)
+                .rejectedAmount(rejectedAmount)
+                .completedAmount(completedAmount)
                 .approvalRate(approvalRate)
                 .build();
     }

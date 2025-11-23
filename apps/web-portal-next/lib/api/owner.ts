@@ -1,7 +1,14 @@
 import axiosClient from "./axiosClient";
 
-const OWNER_API_URL =
-  process.env.NEXT_PUBLIC_OWNER_API_URL || "http://localhost:8182/api/owner";
+const OWNER_API_URL = (() => {
+  const url = process.env.NEXT_PUBLIC_OWNER_API_URL;
+  if (!url) {
+    throw new Error(
+      "[owner api] Missing NEXT_PUBLIC_OWNER_API_URL. Set it to Owner service base (e.g., http://localhost:8082/api/owner or http://owner-backend:8082/api/owner)."
+    );
+  }
+  return url;
+})();
 
 // Helper request
 const requestOwner = {

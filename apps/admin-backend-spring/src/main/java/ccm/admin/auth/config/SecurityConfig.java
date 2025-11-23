@@ -44,8 +44,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    @Value("${app.frontend.origin:http://localhost:3000}")
-    private String frontendOrigin;
+    @Value("${app.frontend.origins:http://localhost:3000}")
+    private String frontendOrigins;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -75,7 +75,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(java.util.List.of(frontendOrigin));
+        // Support comma-separated origins for multi-env (local, Docker, etc.)
+        java.util.List<String> origins = java.util.Arrays.stream(frontendOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        cfg.setAllowedOrigins(origins);
         cfg.setAllowedMethods(java.util.List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
         cfg.setAllowedHeaders(java.util.List.of("Authorization","Content-Type","Accept"));
         cfg.setAllowCredentials(true);
