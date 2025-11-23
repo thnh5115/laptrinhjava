@@ -1,22 +1,27 @@
-"use client"
+"use client";
 
-import { Card } from "@/components/ui/card"
-import { Leaf, ShoppingCart, Shield, Settings } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import type { UserRole } from "@/lib/mock-data"
+import { Card } from "@/components/ui/card";
+import { Leaf, ShoppingCart, Shield, Settings } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type { UserRole } from "@/lib/mock-data";
 
 interface RoleSelectorProps {
-  selectedRole: UserRole
-  onRoleChange: (role: UserRole) => void
+  selectedRole: UserRole;
+  onRoleChange: (role: UserRole) => void;
 }
 
 const roles: Array<{
-  value: UserRole
-  label: string
-  icon: typeof Leaf
-  description: string
-  color: string
-  hidden?: boolean
+  value: UserRole;
+  label: string;
+  icon: typeof Leaf;
+  description: string;
+  color: string;
+  hidden?: boolean;
 }> = [
   {
     value: "ev-owner",
@@ -38,6 +43,7 @@ const roles: Array<{
     icon: Shield,
     description: "Verify and approve emission data and credit issuance.",
     color: "purple",
+    hidden: true,
   },
   {
     value: "admin",
@@ -47,17 +53,20 @@ const roles: Array<{
     color: "orange",
     hidden: true, // Hidden by default
   },
-]
+];
 
-export function RoleSelector({ selectedRole, onRoleChange }: RoleSelectorProps) {
+export function RoleSelector({
+  selectedRole,
+  onRoleChange,
+}: RoleSelectorProps) {
   return (
     <TooltipProvider>
       <div className="grid grid-cols-2 gap-3">
         {roles
           .filter((role) => !role.hidden)
           .map((role) => {
-            const Icon = role.icon
-            const isSelected = selectedRole === role.value
+            const Icon = role.icon;
+            const isSelected = selectedRole === role.value;
             return (
               <Tooltip key={role.value}>
                 <TooltipTrigger asChild>
@@ -72,7 +81,9 @@ export function RoleSelector({ selectedRole, onRoleChange }: RoleSelectorProps) 
                     <div className="p-4 flex flex-col items-center text-center gap-2">
                       <div
                         className={`p-3 rounded-lg ${
-                          isSelected ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"
+                          isSelected
+                            ? "bg-emerald-600 text-white"
+                            : "bg-muted text-muted-foreground"
                         }`}
                       >
                         <Icon className="w-5 h-5" />
@@ -87,9 +98,9 @@ export function RoleSelector({ selectedRole, onRoleChange }: RoleSelectorProps) 
                   <p className="text-sm">{role.description}</p>
                 </TooltipContent>
               </Tooltip>
-            )
+            );
           })}
       </div>
     </TooltipProvider>
-  )
+  );
 }

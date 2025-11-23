@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -35,7 +36,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true") // <--- THÊM DÒNG NÀY
 @RestController
 @RequestMapping("/api/cva/requests")
 @Tag(name = "CVA Requests", description = "Verification lifecycle management")
@@ -73,12 +76,12 @@ public class VerificationRequestController {
     public PageResponse<VerificationRequestResponse> list(
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) VerificationStatus status,
-            @RequestParam(required = false) UUID ownerId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant createdFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant createdTo,
+            @RequestParam(required = false) Long ownerId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime createdTo,
             @RequestParam(required = false) String search
     ) {
-        VerificationRequestQuery query = new VerificationRequestQuery(status, ownerId, createdFrom, createdTo, search);
+        VerificationRequestQuery query = new VerificationRequestQuery( status, ownerId, createdFrom, createdTo, search);
         Page<VerificationRequest> page = service.search(query, pageable);
         List<VerificationRequestResponse> content = page.getContent().stream()
             .map(mapper::toResponse)
@@ -97,7 +100,7 @@ public class VerificationRequestController {
 
     @Operation(summary = "Get verification request details")
     @GetMapping("/{id}")
-    public VerificationRequestResponse detail(@PathVariable UUID id) {
+    public VerificationRequestResponse detail(@PathVariable Long id) {
         VerificationRequest request = service.get(id);
         return mapper.toResponse(request);
     }
@@ -106,7 +109,7 @@ public class VerificationRequestController {
     @PutMapping("/{id}/approve")
     @RateLimited("approve")
     public ResponseEntity<VerificationRequestResponse> approve(
-            @PathVariable UUID id,
+            @PathVariable Long id,
             @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
             @RequestHeader(value = "X-Correlation-Id", required = false) String correlationId,
             @Valid @RequestBody ApproveVerificationRequestPayload payload
@@ -133,7 +136,7 @@ public class VerificationRequestController {
     @PutMapping("/{id}/reject")
     @RateLimited("reject")
     public ResponseEntity<VerificationRequestResponse> reject(
-            @PathVariable UUID id,
+            @PathVariable Long id,
             @RequestHeader(value = "X-Correlation-Id", required = false) String correlationId,
             @Valid @RequestBody RejectVerificationRequestPayload payload
     ) {

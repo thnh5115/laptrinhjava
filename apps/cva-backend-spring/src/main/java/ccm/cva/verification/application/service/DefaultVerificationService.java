@@ -13,13 +13,14 @@ import ccm.cva.verification.domain.VerificationRequest;
 import ccm.cva.verification.domain.VerificationStatus;
 import ccm.cva.verification.infrastructure.repository.VerificationRequestRepository;
 import ccm.cva.issuance.domain.CreditIssuance;
-import java.time.Instant;
+
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -70,7 +71,7 @@ public class DefaultVerificationService implements VerificationService {
         request.setChecksum(command.checksum() != null ? command.checksum().trim() : null);
         request.setNotes(command.notes());
         request.setStatus(VerificationStatus.PENDING);
-        request.setCreatedAt(Instant.now());
+        request.setCreatedAt(LocalDateTime.now());
         VerificationRequest saved = repository.save(request);
 
         Map<String, Object> auditPayload = new HashMap<>();
@@ -101,14 +102,14 @@ public class DefaultVerificationService implements VerificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public VerificationRequest get(UUID id) {
+    public VerificationRequest get(Long id) {
         return repository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Verification request %s not found".formatted(id)));
     }
 
     @Override
     @Transactional
-    public VerificationRequest approve(UUID id, ApproveVerificationRequestCommand command) {
+    public VerificationRequest approve(Long id, ApproveVerificationRequestCommand command) {
         if (!StringUtils.hasText(command.idempotencyKey())) {
             throw new DomainValidationException(
                 "Missing idempotency key",
@@ -129,7 +130,7 @@ public class DefaultVerificationService implements VerificationService {
             request.setCreditIssuance(issuance);
             if (request.getStatus() != VerificationStatus.APPROVED) {
                 request.setStatus(VerificationStatus.APPROVED);
-                request.setVerifiedAt(Instant.now());
+                request.setVerifiedAt(LocalDateTime.now());
             }
             request.setVerifierId(command.verifierId());
             if (StringUtils.hasText(command.notes())) {
@@ -144,7 +145,7 @@ public class DefaultVerificationService implements VerificationService {
     request.setCreditIssuance(issuance);
 
         request.setStatus(VerificationStatus.APPROVED);
-        request.setVerifiedAt(Instant.now());
+        request.setVerifiedAt(LocalDateTime.now());
         request.setVerifierId(command.verifierId());
         if (StringUtils.hasText(command.notes())) {
             request.setNotes(command.notes());
@@ -165,12 +166,12 @@ public class DefaultVerificationService implements VerificationService {
 
     @Override
     @Transactional
-    public VerificationRequest reject(UUID id, RejectVerificationRequestCommand command) {
+    public VerificationRequest reject(Long id, RejectVerificationRequestCommand command) {
         VerificationRequest request = get(id);
         ensurePending(request);
 
         request.setStatus(VerificationStatus.REJECTED);
-        request.setVerifiedAt(Instant.now());
+        request.setVerifiedAt(LocalDateTime.now());
         request.setVerifierId(command.verifierId());
         request.setNotes(command.reason());
 

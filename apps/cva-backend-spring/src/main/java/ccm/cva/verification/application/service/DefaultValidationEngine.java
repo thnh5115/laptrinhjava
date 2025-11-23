@@ -29,9 +29,7 @@ public class DefaultValidationEngine implements ValidationEngine {
         if (command.ownerId() == null) {
             errors.add("ownerId is required");
         }
-        if (!StringUtils.hasText(command.tripId())) {
-            errors.add("tripId is required");
-        }
+       
         if (!StringUtils.hasText(command.checksum())) {
             errors.add("checksum is required");
         }
@@ -45,10 +43,7 @@ public class DefaultValidationEngine implements ValidationEngine {
         if (repository.existsByChecksum(command.checksum())) {
             errors.add("A verification request with the same checksum already exists");
         }
-        if (command.ownerId() != null && StringUtils.hasText(command.tripId())
-            && repository.existsByOwnerIdAndTripId(command.ownerId(), command.tripId().trim())) {
-            errors.add("This owner has already submitted verification for the provided trip");
-        }
+        
 
         if (command.distanceKm() != null && command.energyKwh() != null
             && command.distanceKm().signum() > 0) {

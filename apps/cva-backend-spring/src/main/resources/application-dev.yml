@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD:632005}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -27,3 +27,9 @@ logging:
   level:
     org.flywaydb: info
     org.hibernate.SQL: debug
+app:
+  security:
+    jwt:
+      secret: my-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256
+      expiration-ms: 900000
+      refresh-expiration-ms: 604800000

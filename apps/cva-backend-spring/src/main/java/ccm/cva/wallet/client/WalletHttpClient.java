@@ -3,7 +3,7 @@ package ccm.cva.wallet.client;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.Objects;
-import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -16,10 +16,6 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-/**
- * HTTP implementation of {@link WalletClient} that forwards credit requests to the EV Owner wallet
- * service. The endpoint and base URL are configurable through {@link WalletClientProperties}.
- */
 public class WalletHttpClient implements WalletClient {
 
     private static final Logger log = LoggerFactory.getLogger(WalletHttpClient.class);
@@ -33,12 +29,14 @@ public class WalletHttpClient implements WalletClient {
     }
 
     @Override
-    public void credit(UUID ownerId, BigDecimal credits, String correlationId, String idempotencyKey) {
+    public void credit(Long ownerId, BigDecimal credits, String correlationId, String idempotencyKey) { // SỬA: Long ownerId
         Assert.notNull(ownerId, "ownerId must not be null");
         Assert.notNull(credits, "credits must not be null");
         Assert.hasText(idempotencyKey, "idempotencyKey must not be blank");
 
+        // Tạo request body với Long ownerId
         WalletCreditRequest body = new WalletCreditRequest(ownerId, credits, correlationId);
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(MediaType.parseMediaTypes(MediaType.APPLICATION_JSON_VALUE));
@@ -69,10 +67,11 @@ public class WalletHttpClient implements WalletClient {
         URI base = Objects.requireNonNull(properties.getBaseUrl(), "Wallet base URL must be configured");
         String creditPath = properties.getCreditPath();
         if (creditPath == null || creditPath.isBlank()) {
-            creditPath = "/api/wallet/credits";
+            creditPath = "/api/owner/wallet/credits"; // Cập nhật đường dẫn mới cho đúng Owner Backend
         }
         return base.resolve(creditPath.startsWith("/") ? creditPath : "/" + creditPath);
     }
 
-    private record WalletCreditRequest(UUID ownerId, BigDecimal amount, String correlationId) { }
+    // SỬA: Record này cũng phải dùng Long
+    private record WalletCreditRequest(Long ownerId, BigDecimal amount, String correlationId) { }
 }

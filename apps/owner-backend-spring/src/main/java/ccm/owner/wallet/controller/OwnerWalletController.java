@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import ccm.owner.wallet.dto.request.CreditRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -21,7 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/owner/wallet")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasRole('EV_OWNER')")
+@PreAuthorize("hasAnyRole('EV_OWNER', 'ADMIN')")
 @Tag(name = "EV Owner - Wallet", description = "Wallet and withdrawal management for EV Owners")
 /**
  * Controller for EV Owner wallet operations
@@ -30,6 +31,13 @@ public class OwnerWalletController {
 
     private final OwnerWalletService walletService;
 
+    @Operation(summary = "System Credit Addition", description = "Internal API for CVA to issue credits")
+    @PostMapping("/credits") // -> URL đầy đủ: /api/owner/wallet/credits
+    // Lưu ý: Ở môi trường thật cần bảo mật endpoint này (chỉ cho IP nội bộ hoặc dùng API Key)
+    public ResponseEntity<Void> receiveCredits(@RequestBody CreditRequest request) {
+        walletService.addCredits(request.getOwnerId(), request.getAmount());
+        return ResponseEntity.ok().build();
+    }
     @Operation(
             summary = "Get Wallet Balance",
             description = "Retrieve current wallet balance and financial statistics for the authenticated EV Owner"

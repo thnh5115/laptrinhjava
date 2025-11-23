@@ -5,11 +5,11 @@ import { Home, Upload, History, Wallet, ShoppingCart } from "lucide-react";
 import { WalletOverview } from "@/components/owner/wallet-overview";
 
 const navigation = [
-  { name: "Dashboard", href: "/ev-owner/dashboard", icon: Home },
-  { name: "Upload Journey", href: "/ev-owner/upload", icon: Upload },
-  { name: "Journey History", href: "/ev-owner/history", icon: History },
-  { name: "My Credits", href: "/ev-owner/credits", icon: ShoppingCart },
-  { name: "Wallet", href: "/ev-owner/wallet", icon: Wallet },
+  { name: "Dashboard", href: "/owner/dashboard", icon: Home }, // ĐÚNG (khớp với folder app/owner)
+  { name: "Upload Journey", href: "/owner/upload", icon: Upload },
+  { name: "Journey History", href: "/owner/history", icon: History },
+  { name: "My Credits", href: "/owner/credits", icon: ShoppingCart },
+  { name: "Wallet", href: "/owner/wallet", icon: Wallet },
 ];
 
 export default function WalletPage() {

@@ -5,7 +5,7 @@ import ccm.cva.verification.application.command.CreateVerificationRequestCommand
 import ccm.cva.verification.application.command.RejectVerificationRequestCommand;
 import ccm.cva.verification.domain.VerificationRequest;
 import ccm.cva.verification.application.query.VerificationRequestQuery;
-import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -15,9 +15,9 @@ public interface VerificationService {
 
     Page<VerificationRequest> search(VerificationRequestQuery query, Pageable pageable);
 
-    VerificationRequest get(UUID id);
+    VerificationRequest get(Long id);
 
-    VerificationRequest approve(UUID id, ApproveVerificationRequestCommand command);
+    VerificationRequest approve(Long id, ApproveVerificationRequestCommand command);
 
-    VerificationRequest reject(UUID id, RejectVerificationRequestCommand command);
+    VerificationRequest reject(Long id, RejectVerificationRequestCommand command);
 }

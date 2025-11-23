@@ -1,15 +1,16 @@
 package ccm.cva.report.application.dto;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
+
+import java.time.LocalDateTime;
+
 
 public record CreditIssuanceSummary(
-        UUID id,
+        Long id,
         BigDecimal co2ReducedKg,
         BigDecimal creditsRaw,
         BigDecimal creditsRounded,
         String idempotencyKey,
         String correlationId,
-        Instant createdAt
+        LocalDateTime createdAt
 ) {}

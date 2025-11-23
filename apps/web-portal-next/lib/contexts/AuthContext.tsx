@@ -154,9 +154,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           router.push("/admin/dashboard");
         } else if (userData.role === "BUYER") {
           router.push("/buyer/dashboard");
-        } else if (userData.role === "EV_OWNER") {
+        } else if (
+          userData.role === "OWNER" ||
+          userData.role === "EV_OWNER" ||
+          userData.role === "ev-owner"
+        ) {
           router.push("/owner/dashboard");
-        } else if (userData.role === "AUDITOR") {
+        } else if (userData.role === "AUDITOR" || userData.role === "CVA") {
           router.push("/cva/dashboard");
         } else {
           router.push("/login");

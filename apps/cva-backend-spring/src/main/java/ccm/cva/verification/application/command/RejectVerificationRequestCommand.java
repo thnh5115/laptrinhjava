@@ -1,8 +1,8 @@
 package ccm.cva.verification.application.command;
 
-import java.util.UUID;
+
 
 public record RejectVerificationRequestCommand(
-        UUID verifierId,
+        Long verifierId,
         String reason
 ) {}

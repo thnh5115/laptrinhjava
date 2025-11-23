@@ -7,7 +7,7 @@ import ccm.cva.report.application.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.UUID;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.CrossOrigin;
+
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true") // <--- THÊM DÒNG NÀY
 
 @RestController
 @RequestMapping("/api/cva/reports")
@@ -32,7 +35,7 @@ public class ReportController {
     @GetMapping("/{id}")
     @RateLimited("report")
     public ResponseEntity<?> generateReport(
-            @PathVariable UUID id,
+            @PathVariable Long id,
             @Parameter(description = "Output format (json or pdf)")
             @RequestParam(name = "format", required = false, defaultValue = "json") String format
     ) {

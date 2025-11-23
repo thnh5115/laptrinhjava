@@ -1,24 +1,31 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { RoleSelector } from "./role-selector"
+import axiosClient from "@/lib/api/axiosClient";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { RoleSelector } from "./role-selector";
 // TODO: Import from proper location when validators are available
 // import { registerSchema, type RegisterFormData } from "@/lib/validators/register-schema"
-import { mockUsers } from "@/lib/mock-data"
-import type { UserRole } from "@/lib/mock-data"
+import { mockUsers } from "@/lib/mock-data";
+import type { UserRole } from "@/lib/mock-data";
 
 // Temporary inline schema until validators package is properly set up
-import { z } from "zod"
+import { z } from "zod";
 const registerSchema = z
   .object({
     fullName: z.string().min(2, "Please enter your name"),
@@ -30,14 +37,14 @@ const registerSchema = z
   .refine((values) => values.password === values.confirmPassword, {
     path: ["confirmPassword"],
     message: "Passwords do not match",
-  })
-type RegisterFormData = z.infer<typeof registerSchema>
+  });
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const { toast } = useToast()
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { toast } = useToast();
 
   const {
     register,
@@ -54,53 +61,58 @@ export function RegisterForm() {
       confirmPassword: "",
       role: "ev-owner",
     },
-  })
+  });
 
-  const selectedRole = watch("role")
+  const selectedRole = watch("role");
 
   const onSubmit = async (data: RegisterFormData) => {
-    setError("")
-    setIsLoading(true)
+    setError("");
+    setIsLoading(true);
 
-    // Check if email already exists
-    const existingUser = mockUsers.find((u) => u.email === data.email)
-    if (existingUser) {
-      setError("An account with this email already exists")
-      setIsLoading(false)
-      return
+    try {
+      // --- GỌI API THẬT CỦA ADMIN BACKEND ---
+      // Role cần chuyển đổi: "ev-owner" -> "EV_OWNER" để khớp với Enum Java
+      const roleMapping = {
+        "ev-owner": "EV_OWNER",
+        buyer: "BUYER",
+        cva: "CVA",
+        admin: "ADMIN",
+      };
+
+      // Backend của bạn đang chạy cổng 8080
+      // axiosClient đã được cấu hình base URL là http://localhost:8080/api
+      await axiosClient.post("/auth/register", {
+        fullName: data.fullName,
+        email: data.email,
+        password: data.password,
+        role: roleMapping[data.role as keyof typeof roleMapping] || "EV_OWNER",
+      });
+
+      toast({
+        title: "Account created successfully!",
+        description: "Your account has been saved to the database.",
+      });
+
+      // Chuyển hướng về trang đăng nhập
+      router.push("/login");
+    } catch (err: any) {
+      console.error("Registration failed:", err);
+      // Hiển thị lỗi thật từ Backend trả về (ví dụ: Email already exists)
+      setError(
+        err.response?.data?.message || "Registration failed. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
     }
-
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // Mock successful registration
-    const newUser = {
-      id: `user-${Date.now()}`,
-      email: data.email,
-      password: data.password,
-    role: data.role as UserRole,
-    name: data.fullName,
-    }
-
-    // Add to mock users (in a real app, this would be a backend call)
-    mockUsers.push(newUser)
-
-    setIsLoading(false)
-
-    toast({
-      title: "Account created successfully!",
-      description: "You can now sign in with your credentials.",
-    })
-
-    // Redirect to login page
-    router.push("/login")
-  }
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Create Account</CardTitle>
-        <CardDescription>Fill in your details to get started with CarbonCredit</CardDescription>
+        <CardDescription>
+          Fill in your details to get started with CarbonCredit
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -119,7 +131,9 @@ export function RegisterForm() {
               {...register("fullName")}
               className={errors.fullName ? "border-red-500" : ""}
             />
-            {errors.fullName && <p className="text-sm text-red-500">{errors.fullName.message}</p>}
+            {errors.fullName && (
+              <p className="text-sm text-red-500">{errors.fullName.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -131,7 +145,9 @@ export function RegisterForm() {
               {...register("email")}
               className={errors.email ? "border-red-500" : ""}
             />
-            {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+            {errors.email && (
+              <p className="text-sm text-red-500">{errors.email.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -143,7 +159,9 @@ export function RegisterForm() {
               {...register("password")}
               className={errors.password ? "border-red-500" : ""}
             />
-            {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+            {errors.password && (
+              <p className="text-sm text-red-500">{errors.password.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -155,19 +173,31 @@ export function RegisterForm() {
               {...register("confirmPassword")}
               className={errors.confirmPassword ? "border-red-500" : ""}
             />
-            {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>}
+            {errors.confirmPassword && (
+              <p className="text-sm text-red-500">
+                {errors.confirmPassword.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label>Select Your Role</Label>
             <RoleSelector
               selectedRole={selectedRole}
-              onRoleChange={(role) => setValue("role", role, { shouldValidate: true })}
+              onRoleChange={(role) =>
+                setValue("role", role, { shouldValidate: true })
+              }
             />
-            {errors.role && <p className="text-sm text-red-500">{errors.role.message}</p>}
+            {errors.role && (
+              <p className="text-sm text-red-500">{errors.role.message}</p>
+            )}
           </div>
 
-          <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full bg-emerald-600 hover:bg-emerald-700"
+            disabled={isLoading}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -180,5 +210,5 @@ export function RegisterForm() {
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

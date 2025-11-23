@@ -1,25 +1,11 @@
 package ccm.cva.issuance.domain;
 
 import ccm.cva.verification.domain.VerificationRequest;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import java.math.BigDecimal;
+import java.time.LocalDateTime; // Dùng LocalDateTime cho đồng bộ
 
 @Entity
 @Table(
@@ -39,17 +25,15 @@ import org.hibernate.type.SqlTypes;
 public class CreditIssuance {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @JdbcTypeCode(SqlTypes.BINARY)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // SỬA: Dùng ID tự tăng (Long)
+    private Long id;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "request_id", nullable = false, unique = true)
-    private VerificationRequest verificationRequest;
+    private VerificationRequest verificationRequest; // Bây giờ nó sẽ link tới VerificationRequest (Long ID)
 
     @Column(name = "owner_id", nullable = false)
-    @JdbcTypeCode(SqlTypes.BINARY)
-    private UUID ownerId;
+    private Long ownerId; 
 
     @Column(name = "co2_reduced_kg", nullable = false, precision = 18, scale = 6)
     private BigDecimal co2ReducedKg;
@@ -67,12 +51,12 @@ public class CreditIssuance {
     private String correlationId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    private LocalDateTime createdAt; // SỬA: Instant -> LocalDateTime
 
     @PrePersist
     void onCreate() {
         if (createdAt == null) {
-            createdAt = Instant.now();
+            createdAt = LocalDateTime.now();
         }
     }
 }

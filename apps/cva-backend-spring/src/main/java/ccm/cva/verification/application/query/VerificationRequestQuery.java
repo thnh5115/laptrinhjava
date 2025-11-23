@@ -1,14 +1,15 @@
 package ccm.cva.verification.application.query;
 
 import ccm.cva.verification.domain.VerificationStatus;
-import java.time.Instant;
-import java.util.UUID;
+
+import java.time.LocalDateTime;
+;
 
 public record VerificationRequestQuery(
         VerificationStatus status,
-        UUID ownerId,
-        Instant createdFrom,
-        Instant createdTo,
+        Long ownerId,
+        LocalDateTime createdFrom,
+        LocalDateTime createdTo,
         String search
 ) {
     public static VerificationRequestQuery empty() {

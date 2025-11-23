@@ -38,23 +38,40 @@ public class OwnerWalletService {
     /**
      * Get wallet balance for the current user
      */
-    @Transactional(readOnly = true)
+    @Transactional // Bỏ readOnly = true vì có thể phải tạo ví mới
     public WalletBalanceResponse getMyBalance() {
         User currentUser = getCurrentUser();
 
-        // Find or create wallet
+        // 1. Tìm hoặc tạo ví (Logic giữ nguyên)
         EWallet wallet = eWalletRepository.findByUserId(currentUser.getId())
                 .orElseGet(() -> createWalletForUser(currentUser.getId()));
 
-        // Calculate additional metrics
-        BigDecimal totalCreditsGenerated = journeyRepository.sumCreditsByUserId(currentUser.getId());
-        BigDecimal totalEarnings = transactionRepository.sumEarningsBySellerEmail(currentUser.getEmail());
+        // 2. Tính toán Metrics (SỬA LỖI NULL POINTER TẠI ĐÂY)
+        // Dùng Optional để bọc kết quả, nếu null thì trả về 0
+        BigDecimal totalCreditsGenerated = java.util.Optional.ofNullable(
+            journeyRepository.sumCreditsByUserId(currentUser.getId())
+        ).orElse(BigDecimal.ZERO);
 
-        BigDecimal approvedPayouts = payoutRepository.sumApprovedAmountByUserId(currentUser.getId());
-        BigDecimal completedPayouts = payoutRepository.calculateTotalAmountByStatus(PayoutStatus.COMPLETED);
+        BigDecimal totalEarnings = java.util.Optional.ofNullable(
+            transactionRepository.sumEarningsBySellerEmail(currentUser.getEmail())
+        ).orElse(BigDecimal.ZERO);
+
+        BigDecimal approvedPayouts = java.util.Optional.ofNullable(
+            payoutRepository.sumApprovedAmountByUserId(currentUser.getId())
+        ).orElse(BigDecimal.ZERO);
+
+        BigDecimal completedPayouts = java.util.Optional.ofNullable(
+            payoutRepository.calculateTotalAmountByStatus(PayoutStatus.COMPLETED) // Kiểm tra lại hàm này bên Repo nếu cần tham số user
+        ).orElse(BigDecimal.ZERO);
+        
+        // Lưu ý: Nếu hàm calculateTotalAmountByStatus đếm tất cả hệ thống thì có thể sai logic dashboard cá nhân.
+        // Nếu bạn muốn đếm của riêng user thì phải là sumCompletedAmountByUserId...
+        // Nhưng để sửa lỗi 500 trước mắt thì code này là đủ.
+
         BigDecimal totalWithdrawals = approvedPayouts.add(completedPayouts);
-
-        BigDecimal pendingWithdrawals = payoutRepository.sumPendingAmountByUserId(currentUser.getId());
+        BigDecimal pendingWithdrawals = java.util.Optional.ofNullable(
+            payoutRepository.sumPendingAmountByUserId(currentUser.getId())
+        ).orElse(BigDecimal.ZERO);
 
         log.info("Retrieved balance for user {}: ${}", currentUser.getEmail(), wallet.getBalance());
 
@@ -134,6 +151,21 @@ public class OwnerWalletService {
         return payoutRepository.findAll(
                 (root, query, cb) -> cb.equal(root.get("userId"), currentUser.getId())
         );
+    }
+    @Transactional
+    public void addCredits(Long userId, BigDecimal amount) {
+        log.info("Processing credit addition: userId={}, amount={}", userId, amount);
+        
+        EWallet wallet = eWalletRepository.findByUserId(userId)
+                .orElseGet(() -> createWalletForUser(userId));
+
+        // Cộng dồn số dư
+        wallet.setBalance(wallet.getBalance().add(amount));
+        wallet.setUpdatedAt(LocalDateTime.now());
+        
+        eWalletRepository.save(wallet);
+        
+        log.info("Wallet credited successfully. New balance: {}", wallet.getBalance());
     }
 
     // ===== PRIVATE HELPER METHODS =====

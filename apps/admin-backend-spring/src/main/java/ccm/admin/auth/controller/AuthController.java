@@ -8,6 +8,9 @@ import ccm.admin.auth.security.JwtService;
 import ccm.admin.auth.service.RefreshTokenService;
 import ccm.admin.user.entity.User;
 import ccm.admin.user.repository.UserRepository;
+import ccm.admin.auth.dto.request.RegisterRequest;
+import ccm.admin.user.entity.Role;
+import ccm.admin.user.repository.RoleRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -23,12 +26,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
+
 
 import java.util.Map;
 
@@ -46,6 +51,8 @@ public class AuthController {
     private final HttpAuditService httpAuditService;
     private final UserRepository userRepository;
     private final RefreshTokenService refreshTokenService;
+    private final PasswordEncoder passwordEncoder;
+    private final RoleRepository roleRepository;
     
     @Value("${app.security.jwt.expiration-ms:900000}")
     private long jwtExpirationMs;
@@ -55,13 +62,17 @@ public class AuthController {
                           UserDetailsService userDetailsService,
                           HttpAuditService httpAuditService,
                           UserRepository userRepository,
-                          RefreshTokenService refreshTokenService) {
+                          RefreshTokenService refreshTokenService,
+                          PasswordEncoder passwordEncoder, // <--- Thêm
+                          RoleRepository roleRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
         this.httpAuditService = httpAuditService;
         this.userRepository = userRepository;
         this.refreshTokenService = refreshTokenService;
+        this.passwordEncoder = passwordEncoder; // <--- Gán
+        this.roleRepository = roleRepository;
     }
 
     
@@ -150,7 +161,37 @@ public class AuthController {
             throw e; 
         }
     }
+    
+    @Operation(summary = "Register User", description = "Register a new user account.")
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
+        // Kiểm tra email trùng
+        if (userRepository.existsByEmail(req.getEmail())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email is already in use!"));
+        }
 
+        // Kiểm tra Role hợp lệ (Chặn ADMIN/CVA nếu cần)
+        String roleName = req.getRole().toUpperCase();
+        if (roleName.equals("ADMIN") || roleName.equals("CVA")) {
+             return ResponseEntity.badRequest().body(Map.of("message", "Cannot register as Admin/CVA via public API."));
+        }
+
+        // Tìm Role trong DB
+        Role role = roleRepository.findByName(roleName)
+                .orElseThrow(() -> new RuntimeException("Error: Role " + roleName + " is not found."));
+
+        // Tạo User mới
+        User user = new User();
+        user.setFullName(req.getFullName());
+        user.setEmail(req.getEmail());
+        user.setPasswordHash(passwordEncoder.encode(req.getPassword())); // Mã hóa pass
+        user.setRole(role);
+        user.setStatus(ccm.admin.user.entity.enums.AccountStatus.ACTIVE); // Hoặc PENDING tùy logic
+
+        userRepository.saveAndFlush(user);
+
+        return ResponseEntity.ok(Map.of("message", "User registered successfully!"));
+    }
     
     @Operation(
         summary = "Refresh Tokens",

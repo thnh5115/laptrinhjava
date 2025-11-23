@@ -1,9 +1,9 @@
 package ccm.cva.verification.application.command;
 
-import java.util.UUID;
+
 
 public record ApproveVerificationRequestCommand(
-        UUID verifierId,
+        Long verifierId,
         String notes,
         String idempotencyKey,
         String correlationId

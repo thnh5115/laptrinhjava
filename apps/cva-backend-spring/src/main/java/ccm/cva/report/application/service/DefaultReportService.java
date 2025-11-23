@@ -1,3 +1,4 @@
+
 package ccm.cva.report.application.service;
 
 import ccm.cva.report.application.dto.CarbonAuditReport;
@@ -21,10 +22,13 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Instant;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.Optional;
-import java.util.UUID;
+
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DefaultReportService implements ReportService {
 
     private final VerificationRequestRepository verificationRequestRepository;
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public DefaultReportService(VerificationRequestRepository verificationRequestRepository) {
         this.verificationRequestRepository = verificationRequestRepository;
@@ -39,14 +44,16 @@ public class DefaultReportService implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public CarbonAuditReport buildReport(UUID requestId) {
+    public CarbonAuditReport buildReport(Long requestId) { // SỬA: Long
         VerificationRequest request = verificationRequestRepository.findById(requestId)
             .orElseThrow(() -> new ResourceNotFoundException("Verification request %s not found".formatted(requestId)));
 
         CreditIssuanceSummary issuanceSummary = Optional.ofNullable(request.getCreditIssuance())
             .map(this::toSummary)
             .orElse(null);
-        Instant generatedAt = Instant.now();
+            
+        // SỬA: Dùng LocalDateTime
+        LocalDateTime generatedAt = LocalDateTime.now();
         String signature = generateSignature(request, issuanceSummary, generatedAt);
 
         return new CarbonAuditReport(
@@ -78,7 +85,8 @@ public class DefaultReportService implements ReportService {
             document.add(new Paragraph("Carbon Audit Report", headerFont));
 
             Font metaFont = FontFactory.getFont(FontFactory.HELVETICA, 10);
-            document.add(new Paragraph("Generated at: " + report.generatedAt(), metaFont));
+            // SỬA: formatDateTime
+            document.add(new Paragraph("Generated at: " + formatDateTime(report.generatedAt()), metaFont));
             document.add(new Paragraph("Signature: " + report.signature(), metaFont));
             document.add(new Paragraph(" "));
 
@@ -89,8 +97,9 @@ public class DefaultReportService implements ReportService {
             addRow(table, "Trip ID", report.tripId());
             addRow(table, "Checksum", report.checksum());
             addRow(table, "Status", report.status().name());
-            addRow(table, "Created At", formatInstant(report.createdAt()));
-            addRow(table, "Verified At", formatInstant(report.verifiedAt()));
+            // SỬA: formatDateTime
+            addRow(table, "Created At", formatDateTime(report.createdAt()));
+            addRow(table, "Verified At", formatDateTime(report.verifiedAt()));
             addRow(table, "Verifier ID", report.verifierId() != null ? report.verifierId().toString() : "-");
             addRow(table, "Distance (km)", formatDecimal(report.distanceKm()));
             addRow(table, "Energy (kWh)", formatDecimal(report.energyKwh()));
@@ -104,7 +113,8 @@ public class DefaultReportService implements ReportService {
                 addRow(table, "Credits Rounded", formatDecimal(issuance.creditsRounded()));
                 addRow(table, "Idempotency Key", issuance.idempotencyKey());
                 addRow(table, "Correlation ID", Optional.ofNullable(issuance.correlationId()).orElse("-"));
-                addRow(table, "Issuance Created", formatInstant(issuance.createdAt()));
+                // SỬA: formatDateTime
+                addRow(table, "Issuance Created", formatDateTime(issuance.createdAt()));
             }
 
             document.add(table);
@@ -117,17 +127,18 @@ public class DefaultReportService implements ReportService {
 
     private CreditIssuanceSummary toSummary(CreditIssuance issuance) {
         return new CreditIssuanceSummary(
-            issuance.getId(),
+            issuance.getId(), // Long
             issuance.getCo2ReducedKg(),
             issuance.getCreditsRaw(),
             issuance.getCreditsRounded(),
             issuance.getIdempotencyKey(),
             issuance.getCorrelationId(),
-            issuance.getCreatedAt()
+            issuance.getCreatedAt() // LocalDateTime
         );
     }
 
-    private String generateSignature(VerificationRequest request, CreditIssuanceSummary issuance, Instant generatedAt) {
+    // SỬA: Tham số generatedAt là LocalDateTime
+    private String generateSignature(VerificationRequest request, CreditIssuanceSummary issuance, LocalDateTime generatedAt) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             digest.update(request.getId().toString().getBytes(StandardCharsets.UTF_8));
@@ -163,7 +174,8 @@ public class DefaultReportService implements ReportService {
         return value != null ? value.stripTrailingZeros().toPlainString() : "-";
     }
 
-    private String formatInstant(Instant instant) {
-        return instant != null ? instant.toString() : "-";
+    // SỬA: Hàm format cho LocalDateTime
+    private String formatDateTime(LocalDateTime dateTime) {
+        return dateTime != null ? dateTime.format(DATE_FORMATTER) : "-";
     }
 }

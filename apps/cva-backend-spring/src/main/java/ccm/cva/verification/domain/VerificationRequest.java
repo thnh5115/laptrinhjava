@@ -1,92 +1,73 @@
 package ccm.cva.verification.domain;
 
-import ccm.cva.issuance.domain.CreditIssuance;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import ccm.cva.issuance.domain.CreditIssuance; // 1. Import class này
+import jakarta.persistence.*;
+import lombok.*;
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
-import lombok.Getter;
-import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(
-    name = "verification_requests",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_verification_requests_checksum", columnNames = {"checksum"}),
-        @UniqueConstraint(name = "uk_verification_requests_owner_trip", columnNames = {"owner_id", "trip_id"})
-    },
-    indexes = {
-        @Index(name = "idx_verification_requests_owner", columnList = "owner_id"),
-        @Index(name = "idx_verification_requests_status", columnList = "status"),
-        @Index(name = "idx_verification_requests_created_at", columnList = "created_at")
-    }
-)
-@Getter
-@Setter
+@Table(name = "journeys") // Map vào bảng journeys của Admin
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor @Builder
 public class VerificationRequest {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @JdbcTypeCode(SqlTypes.BINARY)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Column(name = "owner_id", nullable = false)
-    @JdbcTypeCode(SqlTypes.BINARY)
-    private UUID ownerId;
+    @Column(name = "user_id", nullable = false)
+    private Long ownerId;
 
-    @Column(name = "trip_id", nullable = false, length = 100)
-    private String tripId;
+    @Transient 
+    private String tripId; 
+    
+    public String getTripId() {
+        return tripId != null ? tripId : "TRIP-" + id;
+    }
 
-    @Column(name = "distance_km", nullable = false, precision = 12, scale = 3)
+    @Column(name = "distance_km")
     private BigDecimal distanceKm;
 
-    @Column(name = "energy_kwh", nullable = false, precision = 12, scale = 3)
+    @Column(name = "energy_used_kwh")
     private BigDecimal energyKwh;
 
-    @Column(name = "checksum", nullable = false, length = 128, unique = true)
-    private String checksum;
+    @Column(name = "rejection_reason", insertable = false, updatable = false) 
+    private String checksum; 
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 32)
-    private VerificationStatus status = VerificationStatus.PENDING;
+    @Column(name = "status")
+    private String statusString;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "verified_at")
-    private Instant verifiedAt;
-
-    @Column(name = "verifier_id")
-    @JdbcTypeCode(SqlTypes.BINARY)
-    private UUID verifierId;
-
-    @Column(name = "notes", columnDefinition = "TEXT")
-    private String notes;
-
-    @OneToOne(mappedBy = "verificationRequest", fetch = FetchType.LAZY)
-    private CreditIssuance creditIssuance;
-
-    @PrePersist
-    void onCreate() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
-        if (status == null) {
-            status = VerificationStatus.PENDING;
+    public VerificationStatus getStatus() {
+        try {
+            if ("VERIFIED".equalsIgnoreCase(statusString)) return VerificationStatus.APPROVED;
+            if ("REJECTED".equalsIgnoreCase(statusString)) return VerificationStatus.REJECTED;
+            return VerificationStatus.PENDING;
+        } catch (Exception e) {
+            return VerificationStatus.PENDING;
         }
     }
+
+    public void setStatus(VerificationStatus status) {
+        if (status == VerificationStatus.APPROVED) this.statusString = "VERIFIED";
+        else if (status == VerificationStatus.REJECTED) this.statusString = "REJECTED";
+        else this.statusString = "PENDING";
+    }
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
+
+    @Column(name = "verified_by")
+    private Long verifierId;
+
+    @Column(name = "rejection_reason")
+    private String notes;
+
+    // 2. KHÔI PHỤC TRƯỜNG NÀY (Để sửa lỗi getCreditIssuance)
+    // mappedBy = "verificationRequest" nghĩa là bảng credit_issuances nắm giữ khóa ngoại
+    @OneToOne(mappedBy = "verificationRequest", fetch = FetchType.LAZY)
+    private CreditIssuance creditIssuance;
 }

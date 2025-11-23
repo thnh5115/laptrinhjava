@@ -8,7 +8,7 @@ import ccm.cva.wallet.client.WalletClient;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Optional;
-import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -90,7 +90,7 @@ public class DefaultIssuanceService implements IssuanceService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<CreditIssuance> getByRequestId(UUID requestId) {
+    public Optional<CreditIssuance> getByRequestId(Long requestId) {
         return repository.findByVerificationRequest_Id(requestId);
     }
 

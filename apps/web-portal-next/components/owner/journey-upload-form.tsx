@@ -1,19 +1,27 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Upload, CheckCircle2 } from "lucide-react"
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Upload, CheckCircle2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { submitJourney } from "@/lib/api/owner";
 
 export function JourneyUploadForm() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState({
     date: "",
     startLocation: "",
@@ -22,57 +30,84 @@ export function JourneyUploadForm() {
     energyUsed: "",
     vehicleModel: "",
     notes: "",
-  })
-
+  });
+  const { toast } = useToast();
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      // 2. GỌI API THẬT (Thay thế đoạn Promise/setTimeout cũ)
+      await submitJourney({
+        journeyDate: formData.date, // date -> journeyDate
+        startLocation: formData.startLocation,
+        endLocation: formData.endLocation,
+        distanceKm: Number(formData.distance), // distance -> distanceKm (Ép kiểu số)
+        energyUsedKwh: Number(formData.energyUsed), // energyUsed -> energyUsedKwh (Ép kiểu số)
+        vehicleId: formData.vehicleModel, // vehicleModel -> vehicleId
+        notes: formData.notes,
+      });
 
-    setIsSubmitting(false)
-    setIsSuccess(true)
+      // 3. Thông báo thành công
+      setIsSuccess(true);
+      toast({ title: "Success", description: "Journey uploaded to database!" });
 
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setIsSuccess(false)
-      setFormData({
-        date: "",
-        startLocation: "",
-        endLocation: "",
-        distance: "",
-        energyUsed: "",
-        vehicleModel: "",
-        notes: "",
-      })
-    }, 3000)
-  }
+      // Reset form sau 3s
+      setTimeout(() => {
+        setIsSuccess(false);
+        setFormData({
+          date: "",
+          startLocation: "",
+          endLocation: "",
+          distance: "",
+          energyUsed: "",
+          vehicleModel: "",
+          notes: "",
+        });
+      }, 3000);
+    } catch (error: any) {
+      console.error("Upload failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description:
+          error?.response?.data?.message ||
+          "Could not save journey. Is the Owner Backend (8182) running?",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
-    }))
-  }
+    }));
+  };
 
   const estimatedCredits =
     formData.distance && formData.energyUsed
       ? ((Number.parseFloat(formData.distance) * 0.32) / 1000).toFixed(2)
-      : "0.00"
+      : "0.00";
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Journey Details</CardTitle>
-        <CardDescription>Provide information about your EV journey to calculate carbon credits</CardDescription>
+        <CardDescription>
+          Provide information about your EV journey to calculate carbon credits
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {isSuccess && (
           <Alert className="mb-6 border-emerald-600 bg-emerald-50 dark:bg-emerald-950">
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             <AlertDescription className="text-emerald-900 dark:text-emerald-100">
-              Journey submitted successfully! It will be reviewed by a CVA shortly.
+              Journey submitted successfully! It will be reviewed by a CVA
+              shortly.
             </AlertDescription>
           </Alert>
         )}
@@ -174,12 +209,17 @@ export function JourneyUploadForm() {
           {formData.distance && formData.energyUsed && (
             <Alert>
               <AlertDescription>
-                <span className="font-medium">Estimated Carbon Credits:</span> {estimatedCredits} tCO2
+                <span className="font-medium">Estimated Carbon Credits:</span>{" "}
+                {estimatedCredits} tCO2
               </AlertDescription>
             </Alert>
           )}
 
-          <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            className="w-full bg-emerald-600 hover:bg-emerald-700"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? (
               "Submitting..."
             ) : (
@@ -192,5 +232,5 @@ export function JourneyUploadForm() {
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

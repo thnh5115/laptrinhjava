@@ -1,27 +1,33 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useAuth } from "@/lib/contexts/AuthContext"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/lib/contexts/AuthContext";
 
 export function LoginForm() {
-  const { login, status, error: authError, clearError } = useAuth()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [localError, setLocalError] = useState("")
-  const [mounted, setMounted] = useState(false)
-  const [hasInteracted, setHasInteracted] = useState(false)
+  const { login, status, error: authError, clearError } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [localError, setLocalError] = useState("");
+  const [mounted, setMounted] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   // Prevent hydration mismatch by only rendering loading state after mount
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   // Clear errors when component unmounts or when user starts typing
   useEffect(() => {
@@ -37,50 +43,54 @@ export function LoginForm() {
   }, [email, password, clearError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     // Prevent auto-submit from browser autofill
     if (!hasInteracted) {
-      console.warn('[LoginForm] Blocked auto-submit - no user interaction detected')
-      return
+      console.warn(
+        "[LoginForm] Blocked auto-submit - no user interaction detected"
+      );
+      return;
     }
-    
-    setLocalError("")
-    clearError()
+
+    setLocalError("");
+    clearError();
 
     // Basic validation
     if (!email || !password) {
-      setLocalError("Please enter both email and password")
-      return
+      setLocalError("Please enter both email and password");
+      return;
     }
 
     if (!email.includes("@")) {
-      setLocalError("Please enter a valid email address")
-      return
+      setLocalError("Please enter a valid email address");
+      return;
     }
 
     try {
       // login() will automatically redirect to appropriate dashboard after success
-      await login(email, password)
+      await login(email, password);
       // No need to manually redirect - AuthContext handles it
     } catch (err: any) {
       // Error is already set in AuthContext
       // Just log it here for debugging
-      console.error('[LoginForm] Login failed:', err)
+      console.error("[LoginForm] Login failed:", err);
     }
-  }
+  };
 
   // Display error from AuthContext or local validation error
-  const displayError = authError || localError
+  const displayError = authError || localError;
 
   // Prevent hydration mismatch - only show loading state after client mount
-  const isLoading = mounted && status === 'loading'
+  const isLoading = mounted && status === "loading";
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Sign In</CardTitle>
-        <CardDescription>Enter your credentials to access your account</CardDescription>
+        <CardDescription>
+          Enter your credentials to access your account
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
@@ -98,8 +108,8 @@ export function LoginForm() {
               placeholder="user@example.com"
               value={email}
               onChange={(e) => {
-                setEmail(e.target.value)
-                setHasInteracted(true)
+                setEmail(e.target.value);
+                setHasInteracted(true);
               }}
               onFocus={() => setHasInteracted(true)}
               disabled={isLoading}
@@ -116,8 +126,8 @@ export function LoginForm() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => {
-                setPassword(e.target.value)
-                setHasInteracted(true)
+                setPassword(e.target.value);
+                setHasInteracted(true);
               }}
               onFocus={() => setHasInteracted(true)}
               disabled={isLoading}
@@ -126,9 +136,9 @@ export function LoginForm() {
             />
           </div>
 
-          <Button 
-            type="submit" 
-            className="w-full bg-emerald-600 hover:bg-emerald-700" 
+          <Button
+            type="submit"
+            className="w-full bg-emerald-600 hover:bg-emerald-700"
             disabled={isLoading}
             onClick={() => setHasInteracted(true)}
           >
@@ -144,7 +154,10 @@ export function LoginForm() {
 
           <p className="text-center text-sm text-muted-foreground">
             Don't have an account?{" "}
-            <a href="/auth/register" className="text-emerald-600 hover:text-emerald-700 font-medium">
+            <a
+              href="/register"
+              className="text-emerald-600 hover:text-emerald-700 font-medium"
+            >
               Sign up
             </a>
           </p>
@@ -155,12 +168,13 @@ export function LoginForm() {
               <p>EV Owner: owner@example.com / password</p>
               <p>Buyer: buyer@example.com / password</p>
               <p>CVA: cva@example.com / password</p>
-              <p className="font-semibold text-emerald-600">Admin: admin@gmail.com / password</p>
+              <p className="font-semibold text-emerald-600">
+                Admin: admin@gmail.com / password
+              </p>
             </div>
           </div>
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }
-
