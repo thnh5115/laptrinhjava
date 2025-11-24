@@ -18,33 +18,26 @@ public class Listing {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  // 1. THÊM MỚI: Liên kết với CarbonCredit (Bắt buộc theo DB)
-  @OneToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "carbon_credit_id", nullable = false)
-  private CarbonCredit carbonCredit;
+  @Column(name = "carbon_credit_id")
+  private Long carbonCreditId;
+  
+  // Map với cột seller_id trong DB
+  @Column(name = "seller_id", nullable = false) 
+  private Long sellerId;
 
-  // 2. SỬA: Đổi từ buyer_id thành seller_id (Người bán mới tạo Listing)
-  // Buyer ở đây thực chất là entity User mà ta đã map lại
-  @JoinColumn(name = "seller_id", nullable = false) 
-   private Long sellerId;
+  // Map với cột quantity trong DB
+  @Column(name = "quantity", nullable = false)
+  private BigDecimal qty;
 
-  // 3. SỬA: Map enum type sang cột listing_type
+  // --- ĐÂY LÀ CHỖ SỬA QUAN TRỌNG NHẤT ---
+  // Map với cột price trong DB (thay vì mặc định là price_per_credit)
+  @Column(name = "price", nullable = false)
+  private BigDecimal pricePerUnit;
+  // --------------------------------------
+
   @Enumerated(EnumType.STRING)
   @Column(name = "listing_type", nullable = false)
-  private ListingType type; 
-
-  // 4. SỬA: Map qty sang cột quantity
-  @Column(name = "quantity", nullable = false)
-  private BigDecimal qty; 
-
-  // 5. XỬ LÝ: Cột này không có trong DB, dùng @Transient để Hibernate bỏ qua
-  // Bạn sẽ cần tự tính toán giá trị này trong Service nếu cần
-  @Transient
-  private BigDecimal availableQty;
-
-  // 6. SỬA: Map pricePerUnit sang cột price
-  @Column(name = "price", nullable = false)
-  private BigDecimal pricePerUnit; 
+  private ListingType type;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
@@ -52,22 +45,22 @@ public class Listing {
 
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;
-
+  
   @Column(name = "updated_at")
   private LocalDateTime updatedAt;
+  
+  @Transient
+  private BigDecimal availableQty;
+
+  // Getter tương thích
+  public BigDecimal getPrice() { return pricePerUnit; }
+  public BigDecimal getAvailableQty() { return qty; }
 
   @PrePersist void onCreate(){
     createdAt = LocalDateTime.now();
     updatedAt = createdAt;
-    if(status==null) status = ListingStatus.DRAFT;
-    if(type==null) type = ListingType.FIXED_PRICE;
-    
-    // Logic tạm: Nếu không có availableQty thì lấy bằng qty ban đầu
-    if(availableQty==null) availableQty = (qty!=null ? qty : BigDecimal.ZERO);
+    if(status==null) status = ListingStatus.PENDING; // Mặc định Pending nếu null
   }
   
   @PreUpdate void onUpdate(){ updatedAt = LocalDateTime.now(); }
-
-  public BigDecimal getPrice() { return pricePerUnit; }
-  public BigDecimal getAvailableQty() { return availableQty; }
 }

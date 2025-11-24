@@ -82,3 +82,54 @@ export async function getOwnerDashboardStats() {
   );
   return data;
 }
+export interface CreateListingPayload {
+  amount: number;
+  pricePerCredit: number;
+}
+
+export async function createListing(payload: CreateListingPayload) {
+  // Gọi POST /api/owner/listings
+  // (requestOwner đã có base URL là .../api/owner nên chỉ cần truyền "/listings")
+  const { data } = await requestOwner.post("/listings", payload);
+  return data;
+}
+export interface WalletBalance {
+  balance: number;
+  currency: string;
+  totalEarnings: number;
+  totalWithdrawals: number;
+  pendingWithdrawals: number;
+  status: string;
+}
+
+export interface WithdrawalRequest {
+  amount: number;
+  paymentMethod: string; // BANK_TRANSFER, PAYPAL, CRYPTO
+  bankAccount: string;
+  notes?: string;
+}
+
+export interface Payout {
+  id: number;
+  amount: number;
+  status: string;
+  requestedAt: string;
+}
+
+// 1. Lấy thông tin ví (Số dư)
+export async function getWalletBalance() {
+  const { data } = await requestOwner.get<WalletBalance>("/wallet/balance");
+  return data;
+}
+
+// 2. Lấy lịch sử rút tiền
+export async function getWithdrawals() {
+  const { data } = await requestOwner.get<Payout[]>("/wallet/withdrawals");
+  return data;
+}
+
+// 3. Gửi yêu cầu rút tiền
+export async function requestWithdrawal(payload: WithdrawalRequest) {
+  const { data } = await requestOwner.post("/wallet/withdraw", payload);
+  return data;
+}

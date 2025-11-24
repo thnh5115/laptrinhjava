@@ -1,6 +1,7 @@
 package ccm.admin.transaction.service.impl;
 
 import ccm.common.dto.paging.PageResponse;
+import ccm.admin.listing.repository.ListingRepository;
 import ccm.admin.transaction.dto.request.UpdateTransactionStatusRequest;
 import ccm.admin.transaction.dto.response.TransactionDetailResponse;
 import ccm.admin.transaction.dto.response.TransactionSummaryResponse;
@@ -11,6 +12,11 @@ import ccm.admin.transaction.repository.TransactionAuditLogRepository;
 import ccm.admin.transaction.repository.TransactionRepository;
 import ccm.admin.transaction.service.TransactionService;
 import ccm.admin.transaction.spec.TransactionSpecification;
+
+import ccm.admin.user.entity.User;
+import ccm.admin.user.repository.UserRepository;
+import ccm.admin.transaction.dto.response.TransactionSummaryResponse;
+import ccm.admin.listing.repository.ListingRepository;
 import ccm.common.util.SortUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.OptimisticLockException;
@@ -33,21 +39,21 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-/** Transaction - Service Implementation - Business logic for Transaction operations */
-
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final TransactionAuditLogRepository auditLogRepository;
-
     
+    // 2. THÊM REPOSITORY ĐỂ TRA CỨU EMAIL
+    private final UserRepository userRepository;
+    private final ListingRepository listingRepository;
+
     private static final Map<TransactionStatus, Set<TransactionStatus>> VALID_TRANSITIONS = Map.of(
         TransactionStatus.PENDING, Set.of(TransactionStatus.APPROVED, TransactionStatus.REJECTED),
         TransactionStatus.APPROVED, Set.of(), 
         TransactionStatus.REJECTED, Set.of()  
     );
 
-    /** Get all records - transactional */
     @Override
     @Transactional(readOnly = true)
     public PageResponse<TransactionSummaryResponse> getAllTransactions(
@@ -58,32 +64,17 @@ public class TransactionServiceImpl implements TransactionService {
             String status, 
             String type) {
         
-        
         Sort sortSpec = SortUtils.parseSort(sort);
-        
         Pageable pageable = PageRequest.of(page, size, sortSpec);
-
-        
         Specification<Transaction> spec = TransactionSpecification.filter(keyword, status, type);
-        
         
         Page<Transaction> transactionPage = transactionRepository.findAll(spec, pageable);
 
-        
         List<TransactionSummaryResponse> content = transactionPage.getContent()
             .stream()
-            .map(t -> new TransactionSummaryResponse(
-                t.getId(),
-                resolveTransactionCode(t),
-                t.getBuyerEmail(),
-                t.getSellerEmail(),
-                t.getTotalPrice(),
-                t.getStatus().name(),
-                t.getCreatedAt()
-            ))
+            .map(this::mapToSummaryResponse) 
             .toList();
 
-        
         return new PageResponse<>(
             content,
             transactionPage.getNumber(),
@@ -96,7 +87,42 @@ public class TransactionServiceImpl implements TransactionService {
         );
     }
 
-    /** Process business logic - transactional */
+    private TransactionSummaryResponse mapToSummaryResponse(Transaction t) {
+        String buyerEmail = "Unknown";
+        String sellerEmail = "Unknown";
+
+        // Tìm Email Buyer
+        if (t.getBuyerId() != null) {
+            buyerEmail = userRepository.findById(t.getBuyerId())
+                    .map(User::getEmail)
+                    .orElse("Deleted User #" + t.getBuyerId());
+        }
+
+        // Tìm Email Seller (Thông qua Listing)
+        if (t.getListingId() != null) {
+             sellerEmail = listingRepository.findById(t.getListingId())
+                    .map(listing -> {
+                        if (listing.getOwner() != null) return listing.getOwner().getEmail();
+                        return "Unknown Owner";
+                    })
+                    .orElse("Deleted Listing #" + t.getListingId());
+        }
+
+        // 4. TRẢ VỀ RECORD (Dùng 'new' thay vì builder)
+        // Thứ tự tham số phải khớp 100% với file Record của bạn:
+        // (id, code, buyer, seller, price, status, date)
+        return new TransactionSummaryResponse(
+            t.getId(),
+            resolveTransactionCode(t),
+            buyerEmail,
+            sellerEmail,
+            t.getAmount(), // Hoặc t.getTotalPrice() tùy tên biến trong Entity Transaction
+            t.getStatus().name(),
+            t.getCreatedAt()
+        );
+    }
+
+     
     @Override
     @Transactional(readOnly = true)
     public TransactionDetailResponse getTransactionById(Long id) {
@@ -115,7 +141,6 @@ public class TransactionServiceImpl implements TransactionService {
         "analytics:trends", 
         "analytics:disputes"
     }, allEntries = true)
-    /** Update status - modifies data */
     public void updateStatus(Long id, UpdateTransactionStatusRequest request) {
         Transaction transaction = transactionRepository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Transaction not found with id: " + id));
@@ -123,7 +148,6 @@ public class TransactionServiceImpl implements TransactionService {
         TransactionStatus currentStatus = transaction.getStatus();
         TransactionStatus newStatus = request.status();
 
-        
         Set<TransactionStatus> allowedTransitions = VALID_TRANSITIONS.getOrDefault(currentStatus, Set.of());
         if (!allowedTransitions.contains(newStatus)) {
             log.warn("Invalid transaction status transition: {} -> {} for transaction ID: {}", 
@@ -135,16 +159,11 @@ public class TransactionServiceImpl implements TransactionService {
 
         log.info("Updating transaction ID: {} from {} to {}", id, currentStatus, newStatus);
 
-        
         transaction.setStatus(newStatus);
         transaction.setUpdatedAt(LocalDateTime.now());
         
         try {
-            
-            
             transactionRepository.save(transaction);
-            
-            
             
             String currentUser = "admin@carbon.local"; 
             
