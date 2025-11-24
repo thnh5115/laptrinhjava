@@ -159,7 +159,7 @@ open http://localhost:3000/cva/dashboard
 
 - `apps/cva-backend-spring/README.md`
 - `docs/cva/carbon-audit-verification-guide.md`
-- `docs/api/cva-e2e.postman_collection.json`
+- `apps/cva-backend-spring/docs/postman/cva-e2e.postman_collection.json`
 
 ### Web Portal (`apps/web-portal-next/`)
 
