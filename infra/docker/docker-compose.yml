@@ -16,7 +16,17 @@ services:
     networks:
       - ccm-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-123456}"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${MYSQL_ROOT_PASSWORD:-123456}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,15 +55,15 @@ services:
     container_name: ccm-admin-backend
     restart: unless-stopped
     environment:
-        SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-        DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-        DB_USERNAME: ${MYSQL_USER:-root}
-        DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
-        SERVER_PORT: ${ADMIN_BACKEND_SERVER_PORT:-8080}
-        JWT_SECRET: ${JWT_SECRET:-my-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256}
-        JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
-        JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
-        APP_FRONTEND_ORIGINS: ${APP_FRONTEND_ORIGINS:-http://localhost:3000,http://web-frontend:3000}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+      DB_USERNAME: ${MYSQL_USER:-root}
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SERVER_PORT: ${ADMIN_BACKEND_SERVER_PORT:-8080}
+      JWT_SECRET: ${JWT_SECRET:-my-super-secret-key-for-jwt-minimum-32-characters-long-for-hs256}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
+      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
+      APP_FRONTEND_ORIGINS: ${APP_FRONTEND_ORIGINS:-http://localhost:3000,http://web-frontend:3000}
     ports:
       - "${ADMIN_BACKEND_PORT:-8080}:8080"
     depends_on:
@@ -64,7 +74,18 @@ services:
     volumes:
       - ~/.m2:/root/.m2
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health", "||", "exit", "1"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/actuator/health",
+          "||",
+          "exit",
+          "1",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 120s
@@ -77,12 +98,12 @@ services:
     container_name: ccm-buyer-backend
     restart: unless-stopped
     environment:
-        SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-        SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-        SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
-        SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
-        SERVER_PORT: ${BUYER_BACKEND_SERVER_PORT:-8081}
-        APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://web-frontend:3000}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SERVER_PORT: ${BUYER_BACKEND_SERVER_PORT:-8081}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://web-frontend:3000}
     ports:
       - "${BUYER_BACKEND_PORT:-8081}:8081"
     depends_on:
@@ -95,7 +116,18 @@ services:
     volumes:
       - ~/.m2:/root/.m2
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health", "||", "exit", "1"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8081/actuator/health",
+          "||",
+          "exit",
+          "1",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 120s
@@ -108,11 +140,12 @@ services:
     container_name: ccm-owner-backend
     restart: unless-stopped
     environment:
-        SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-        SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-        SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
-        SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
-        SERVER_PORT: ${OWNER_BACKEND_SERVER_PORT:-8082}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SERVER_PORT: ${OWNER_BACKEND_SERVER_PORT:-8082}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
     ports:
       - "${OWNER_BACKEND_PORT:-8082}:8082"
     depends_on:
@@ -125,7 +158,18 @@ services:
     volumes:
       - ~/.m2:/root/.m2
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/actuator/health", "||", "exit", "1"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8082/actuator/health",
+          "||",
+          "exit",
+          "1",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 120s
@@ -138,14 +182,14 @@ services:
     container_name: ccm-cva-backend
     restart: unless-stopped
     environment:
-        SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-        DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-        DB_USERNAME: ${MYSQL_USER:-root}
-        DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
-        SERVER_PORT: ${CVA_BACKEND_SERVER_PORT:-8083}
-        APP_FRONTEND_ORIGINS: ${APP_FRONTEND_ORIGINS:-http://localhost:3000,http://web-frontend:3000}
-        APP_SECURITY_DEV_USERNAME: ${CVA_DEV_USERNAME:-cva_officer}
-        APP_SECURITY_DEV_PASSWORD: ${CVA_DEV_PASSWORD:-password123}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/ccm?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+      DB_USERNAME: ${MYSQL_USER:-root}
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SERVER_PORT: ${CVA_BACKEND_SERVER_PORT:-8083}
+      APP_FRONTEND_ORIGINS: ${APP_FRONTEND_ORIGINS:-http://localhost:3000,http://web-frontend:3000}
+      APP_SECURITY_DEV_USERNAME: ${CVA_DEV_USERNAME:-cva_officer}
+      APP_SECURITY_DEV_PASSWORD: ${CVA_DEV_PASSWORD:-password123}
     ports:
       - "${CVA_BACKEND_PORT:-8083}:8083"
     depends_on:
@@ -158,7 +202,18 @@ services:
     volumes:
       - ~/.m2:/root/.m2
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8083/actuator/health", "||", "exit", "1"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8083/actuator/health",
+          "||",
+          "exit",
+          "1",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 120s
@@ -186,7 +241,18 @@ services:
     networks:
       - ccm-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000", "||", "exit", "1"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000",
+          "||",
+          "exit",
+          "1",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 60s
