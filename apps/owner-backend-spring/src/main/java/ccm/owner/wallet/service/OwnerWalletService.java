@@ -11,6 +11,13 @@ import ccm.admin.journey.repository.JourneyRepository;
 import ccm.admin.transaction.repository.TransactionRepository;
 import ccm.admin.user.entity.User;
 import ccm.admin.user.repository.UserRepository;
+import ccm.owner.listing.repository.OwnerListingRepository;
+import ccm.owner.listing.entity.ListingStatus;
+import ccm.owner.listing.entity.Listing;
+import ccm.admin.transaction.entity.Transaction;
+
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -20,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Optional;
+
 
 @Service
 @RequiredArgsConstructor
@@ -34,46 +43,90 @@ public class OwnerWalletService {
     private final JourneyRepository journeyRepository;
     private final TransactionRepository transactionRepository;
     private final PayoutRepository payoutRepository;
+    private final OwnerListingRepository listingRepository;
+
+    
 
     /**
      * Get wallet balance for the current user
      */
-    @Transactional // Bỏ readOnly = true vì có thể phải tạo ví mới
+   @Transactional
     public WalletBalanceResponse getMyBalance() {
         User currentUser = getCurrentUser();
+        Long userId = currentUser.getId();
 
-        // 1. Tìm hoặc tạo ví (Logic giữ nguyên)
-        EWallet wallet = eWalletRepository.findByUserId(currentUser.getId())
-                .orElseGet(() -> createWalletForUser(currentUser.getId()));
+        // 1. Tìm hoặc tạo ví tiền (Money Wallet)
+        EWallet wallet = eWalletRepository.findByUserId(userId)
+                .orElseGet(() -> createWalletForUser(userId));
 
-        // 2. Tính toán Metrics (SỬA LỖI NULL POINTER TẠI ĐÂY)
-        // Dùng Optional để bọc kết quả, nếu null thì trả về 0
-        BigDecimal totalCreditsGenerated = java.util.Optional.ofNullable(
-            journeyRepository.sumCreditsByUserId(currentUser.getId())
-        ).orElse(BigDecimal.ZERO);
-
-        BigDecimal totalEarnings = java.util.Optional.ofNullable(
-            transactionRepository.sumEarningsBySellerEmail(currentUser.getEmail())
-        ).orElse(BigDecimal.ZERO);
-
-        BigDecimal approvedPayouts = java.util.Optional.ofNullable(
-            payoutRepository.sumApprovedAmountByUserId(currentUser.getId())
-        ).orElse(BigDecimal.ZERO);
-
-        BigDecimal completedPayouts = java.util.Optional.ofNullable(
-            payoutRepository.calculateTotalAmountByStatus(PayoutStatus.COMPLETED) // Kiểm tra lại hàm này bên Repo nếu cần tham số user
-        ).orElse(BigDecimal.ZERO);
+        // ====================================================
+        // PHẦN 1: TÍNH TOÁN TÍN CHỈ (CREDITS LOGIC)
+        // ====================================================
         
-        // Lưu ý: Nếu hàm calculateTotalAmountByStatus đếm tất cả hệ thống thì có thể sai logic dashboard cá nhân.
-        // Nếu bạn muốn đếm của riêng user thì phải là sumCompletedAmountByUserId...
-        // Nhưng để sửa lỗi 500 trước mắt thì code này là đủ.
-
-        BigDecimal totalWithdrawals = approvedPayouts.add(completedPayouts);
-        BigDecimal pendingWithdrawals = java.util.Optional.ofNullable(
-            payoutRepository.sumPendingAmountByUserId(currentUser.getId())
+        // A. Tổng tín chỉ kiếm được (Total Generated)
+        BigDecimal totalCreditsGenerated = Optional.ofNullable(
+            journeyRepository.sumCreditsByUserId(userId)
         ).orElse(BigDecimal.ZERO);
 
-        log.info("Retrieved balance for user {}: ${}", currentUser.getEmail(), wallet.getBalance());
+        List<Listing> soldListings = listingRepository.findAll((root, query, cb) -> 
+            cb.and(
+                cb.equal(root.get("owner"), currentUser),
+                cb.equal(root.get("status"), ListingStatus.SOLD)
+            )
+        );
+        BigDecimal soldCredits = soldListings.stream().map(Listing::getQuantity).reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<Listing> unavailableListings = listingRepository.findAll((root, query, cb) -> 
+            cb.and(
+                cb.equal(root.get("owner"), currentUser),
+                root.get("status").in(
+                    ListingStatus.PENDING, 
+                    ListingStatus.APPROVED, 
+                    ListingStatus.OPEN,
+                    ListingStatus.SOLD 
+                )
+            )
+        );
+        
+        BigDecimal usedCredits = unavailableListings.stream()
+                .map(Listing::getQuantity)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // C. Khả dụng = Tổng kiếm được - Đã sử dụng
+        BigDecimal availableCredits = totalCreditsGenerated.subtract(usedCredits);
+        
+        // Đảm bảo không bị âm
+        if (availableCredits.compareTo(BigDecimal.ZERO) < 0) {
+            availableCredits = BigDecimal.ZERO; 
+        }
+
+        // ====================================================
+        // PHẦN 2: TÍNH TOÁN TIỀN (MONEY LOGIC)
+        // ====================================================
+List<Transaction> mySales = transactionRepository.findAll((root, query, cb) ->
+            cb.equal(root.get("sellerId"), userId)
+        );
+        
+          BigDecimal totalEarnings = mySales.stream()
+                .filter(t -> "COMPLETED".equalsIgnoreCase(t.getStatus().name())) 
+                .map(Transaction::getTotalPrice) // Lấy tổng tiền mỗi giao dịch
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Tổng tiền đã rút thành công (COMPLETED)
+        BigDecimal completedPayouts = Optional.ofNullable(
+            payoutRepository.sumAmountByUserIdAndStatus(userId, PayoutStatus.COMPLETED)
+        ).orElse(BigDecimal.ZERO);
+
+        // Tổng tiền đã duyệt rút (APPROVED) - Trừ khỏi ví
+        BigDecimal approvedPayouts = Optional.ofNullable(
+            payoutRepository.sumApprovedAmountByUserId(userId)
+        ).orElse(BigDecimal.ZERO);
+
+        BigDecimal totalWithdrawals = completedPayouts.add(approvedPayouts);
+        
+        BigDecimal pendingWithdrawals = Optional.ofNullable(
+            payoutRepository.sumPendingAmountByUserId(userId)
+        ).orElse(BigDecimal.ZERO);
+
+        log.info("User {}: MoneyBalance=${}, AvailableCredits={}", currentUser.getEmail(), wallet.getBalance(), availableCredits);
 
         return WalletBalanceResponse.builder()
                 .walletId(wallet.getId())
@@ -83,13 +136,20 @@ public class OwnerWalletService {
                 .currency(wallet.getCurrency())
                 .status(wallet.getStatus().name())
                 .lastUpdated(wallet.getUpdatedAt())
+                .soldCredits(soldCredits) // [MỚI] Trả về số đã bán
+                
+                .totalEarnings(totalEarnings) 
+                // Thông tin Credits
                 .totalCreditsGenerated(totalCreditsGenerated)
+                .availableCredits(availableCredits) // Số dư thực tế để bán
+                .lockedCredits(usedCredits)        // Tổng đã dùng
+                
+                // Thông tin Money
                 .totalEarnings(totalEarnings)
                 .totalWithdrawals(totalWithdrawals)
                 .pendingWithdrawals(pendingWithdrawals)
                 .build();
     }
-
     /**
      * Request withdrawal (create payout request)
      */
@@ -110,7 +170,8 @@ public class OwnerWalletService {
                     String.format("Insufficient balance. Available: $%.2f, Requested: $%.2f",
                             wallet.getBalance(), request.getAmount()));
         }
-
+        
+       
         // Check for pending withdrawals
         BigDecimal pendingAmount = payoutRepository.sumPendingAmountByUserId(currentUser.getId());
         BigDecimal availableBalance = wallet.getBalance().subtract(pendingAmount);
@@ -120,6 +181,9 @@ public class OwnerWalletService {
                     String.format("Insufficient available balance after pending withdrawals. Available: $%.2f, Requested: $%.2f",
                             availableBalance, request.getAmount()));
         }
+
+        wallet.setBalance(wallet.getBalance().subtract(request.getAmount()));
+        eWalletRepository.save(wallet);
 
         // Create payout request
         Payout payout = Payout.builder()

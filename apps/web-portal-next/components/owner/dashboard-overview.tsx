@@ -167,13 +167,14 @@ export function OwnerDashboardOverview() {
             <CardTitle className="text-sm font-medium">
               Total Earnings
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-emerald-600" />
+            <DollarSign className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
+              {/* API backend đã fix logic tính theo sellerId nên số này sẽ đúng */}
               ${stats?.totalEarnings?.toFixed(2) || "0.00"}
             </div>
-            <p className="text-xs text-muted-foreground">Lifetime earnings</p>
+            <p className="text-xs text-muted-foreground">Lifetime revenue</p>
           </CardContent>
         </Card>
       </div>

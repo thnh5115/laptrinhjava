@@ -51,4 +51,7 @@ public interface PayoutRepository extends JpaRepository<Payout, Long>, JpaSpecif
      */
     @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payout p WHERE p.userId = :userId AND p.status = 'APPROVED'")
     BigDecimal sumApprovedAmountByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payout p WHERE p.userId = :userId AND p.status = :status")
+    BigDecimal sumAmountByUserIdAndStatus(@Param("userId") Long userId, @Param("status") PayoutStatus status);
 }

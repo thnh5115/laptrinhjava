@@ -115,4 +115,14 @@ public class PayoutAdminController {
             return null;
         }
     }
+
+    @PostMapping("/{id}/complete")
+public ResponseEntity<PayoutDetailResponse> completePayout(
+        @PathVariable Long id,
+        Authentication authentication
+) {
+    Long adminId = resolveAdminId(authentication);
+    PayoutDetailResponse payout = payoutAdminService.completePayout(id, adminId);
+    return ResponseEntity.ok(payout);
+}
 }

@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { FileText, Download, Loader2, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/contexts/AuthContext";
-// Import API thật
 import { getMyCertificates, type Invoice } from "@/lib/api/buyer";
 
 export function CertificateManager() {
@@ -25,7 +24,6 @@ export function CertificateManager() {
     const fetchCerts = async () => {
       try {
         setLoading(true);
-        // Lấy danh sách hóa đơn/chứng chỉ thật từ backend
         const data = await getMyCertificates(Number(user.id));
         setCertificates(data);
       } catch (error) {
@@ -37,11 +35,8 @@ export function CertificateManager() {
     fetchCerts();
   }, [user]);
 
-  // Hàm giả lập download (Vì backend chưa trả về file PDF thật, chỉ trả về đường dẫn chuỗi)
   const handleDownload = (filePath: string) => {
-    alert(
-      `Downloading certificate from: ${filePath}\n(Tính năng download thật cần tích hợp AWS S3 hoặc File Server)`
-    );
+    alert(`Download feature is simulating. File path: ${filePath}`);
   };
 
   if (loading)

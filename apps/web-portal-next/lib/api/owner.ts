@@ -72,6 +72,7 @@ export interface OwnerDashboardStats {
   totalEarnings: number; // Tổng tiền kiếm được
   totalWithdrawals: number;
   pendingWithdrawals: number;
+  soldCredits: number;
 }
 
 // 2. Hàm gọi API lấy số liệu
@@ -99,7 +100,12 @@ export interface WalletBalance {
   totalEarnings: number;
   totalWithdrawals: number;
   pendingWithdrawals: number;
+  lockedCredits: number;
+  availableCredits: number;
   status: string;
+  // Số đang treo bán
+  totalCreditsGenerated: number;
+  soldCredits: number;
 }
 
 export interface WithdrawalRequest {

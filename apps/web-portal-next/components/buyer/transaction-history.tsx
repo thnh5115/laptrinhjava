@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/AuthContext";
-// Import API thật
 import { getMyTransactions, type Transaction } from "@/lib/api/buyer";
 
 export function TransactionHistory() {

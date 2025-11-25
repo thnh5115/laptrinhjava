@@ -5,15 +5,16 @@ import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, Tag, Loader2 } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
@@ -23,50 +24,71 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-// Import API thật
+
+// [FIX] Import thêm getWalletBalance và WalletBalance
 import {
   getMyJourneys,
   createListing,
+  getWalletBalance,
   type JourneyResponse,
+  type WalletBalance,
 } from "@/lib/api/owner";
 
 export function CreditManagement() {
-  // State lưu dữ liệu thật từ API
   const { toast } = useToast();
   const [journeys, setJourneys] = useState<JourneyResponse[]>([]);
+
+  // [FIX] Thêm state lưu số dư từ Backend
+  const [walletInfo, setWalletInfo] = useState<WalletBalance | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [listingPrice, setListingPrice] = useState("25");
   const [isListing, setIsListing] = useState(false);
 
-  // 1. Gọi API lấy danh sách hành trình thật
+  // 1. Gọi API
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      // [FIX] Gọi song song: Lấy Journey (để hiện list) VÀ Lấy Wallet (để hiện số dư đúng)
+      const [journeysData, walletData] = await Promise.all([
+        getMyJourneys(),
+        getWalletBalance(),
+      ]);
+
+      setJourneys(
+        Array.isArray(journeysData)
+          ? journeysData
+          : (journeysData as any).content || []
+      );
+      setWalletInfo(walletData); // Lưu thông tin ví
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const data = await getMyJourneys();
-        // Đảm bảo data luôn là mảng
-        setJourneys(Array.isArray(data) ? data : (data as any).content || []);
-      } catch (error) {
-        console.error("Failed to fetch journeys:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
+  // [FIX] Sử dụng số dư từ Backend (Nếu chưa load xong thì là 0)
+  const availableCredits = walletInfo?.availableCredits || 0;
+
   const handleListCredit = async () => {
-    // 1. Validate dữ liệu
     if (!listingPrice || isNaN(Number(listingPrice))) {
       toast({
         title: "Error",
-        description: "Please enter a valid price",
+        description: "Invalid price",
         variant: "destructive",
       });
       return;
     }
-    if (totalAvailableCredits <= 0) {
+
+    // [FIX] Check số dư dựa trên biến chuẩn từ Backend
+    if (availableCredits <= 0) {
       toast({
         title: "Error",
         description: "You have no credits to list",
@@ -76,34 +98,21 @@ export function CreditManagement() {
     }
 
     setIsListing(true);
-
     try {
-      // 2. GỌI API THẬT (Đã thay thế đoạn code giả lập)
       await createListing({
-        amount: totalAvailableCredits,
+        amount: availableCredits, // Bán hết số khả dụng
         pricePerCredit: Number(listingPrice),
       });
 
-      // 3. Thông báo thành công
-      toast({
-        title: "Success",
-        description: `Listed ${totalAvailableCredits.toFixed(
-          2
-        )} tCO2 successfully!`,
-      });
-
-      // 4. Đóng dialog và làm mới dữ liệu (nếu cần)
+      toast({ title: "Success", description: "Listed successfully!" });
       setIsDialogOpen(false);
 
-      // Mẹo: Bạn có thể gọi lại fetchJourneys() ở đây nếu muốn cập nhật lại số dư ngay lập tức
-      // nhưng hiện tại cứ đóng dialog là được.
+      // [FIX] Reload lại dữ liệu để cập nhật số dư mới (về 0)
+      fetchData();
     } catch (error: any) {
-      console.error("Listing failed:", error);
       toast({
         title: "Failed",
-        description:
-          error?.response?.data?.message ||
-          "Could not list credits. Try again later.",
+        description: error?.response?.data?.message || "Error listing credits",
         variant: "destructive",
       });
     } finally {
@@ -111,21 +120,13 @@ export function CreditManagement() {
     }
   };
 
-  // 2. Logic tính toán dữ liệu thật (Thay thế mock data cũ)
-  // Chỉ lấy các hành trình đã được duyệt (APPROVED hoặc VERIFIED)
+  // Vẫn giữ biến này để hiển thị danh sách bên dưới (UI List)
   const verifiedJourneys = journeys.filter(
     (j) => j.status === "APPROVED" || j.status === "VERIFIED"
   );
 
-  // Tính tổng tín chỉ: Cộng dồn trường estimatedCredits của các hành trình đã duyệt
-  const totalAvailableCredits = verifiedJourneys.reduce(
-    (sum, j) => sum + (j.estimatedCredits || 0),
-    0
-  );
-
-  // Dữ liệu "Đã bán" tạm thời để 0 (Backend chưa hỗ trợ)
-  const totalSoldAmount = 0;
-  const totalSoldValue = 0;
+  // [QUAN TRỌNG] XÓA DÒNG NÀY: const totalAvailableCredits = ...
+  // Vì dòng này chính là nguyên nhân gây lỗi cộng ngược tiền.
 
   if (loading) {
     return (
@@ -138,7 +139,7 @@ export function CreditManagement() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
-        {/* Card 1: Tín chỉ khả dụng (REALTIME) */}
+        {/* Card 1: Tín chỉ khả dụng */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -148,52 +149,61 @@ export function CreditManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalAvailableCredits.toFixed(2)} tCO2
+              {/* [FIX] Hiển thị biến chuẩn từ Backend */}
+              {availableCredits.toFixed(2)} tCO2
+            </div>
+            <p className="text-xs text-muted-foreground">Ready to trade</p>
+          </CardContent>
+        </Card>
+
+        {/* Card 2: Tín chỉ đang treo bán (Locked) */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Sold Credits</CardTitle>
+            <DollarSign className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {/* [FIX] Lấy từ walletInfo.soldCredits */}
+              {walletInfo?.soldCredits?.toFixed(2) || "0.00"} tCO2
             </div>
             <p className="text-xs text-muted-foreground">
-              {verifiedJourneys.length} verified journeys
+              Completed sales
+              {/* Hiển thị thêm số tiền kiếm được ở đây nếu muốn */}
+              <span className="block mt-1 text-emerald-600 font-medium">
+                +${walletInfo?.totalEarnings?.toFixed(2) || "0.00"} earned
+              </span>
             </p>
           </CardContent>
         </Card>
 
-        {/* Card 2: Tín chỉ đã bán */}
+        {/* Card 3: Tổng kiếm được */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sold Credits</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Generated
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalSoldAmount.toFixed(1)} tCO2
+              {walletInfo?.totalCreditsGenerated?.toFixed(2) || "0.00"} tCO2
             </div>
-            <p className="text-xs text-muted-foreground">
-              ${totalSoldValue.toFixed(2)} earned
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Card 3: Giá trung bình */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Price</CardTitle>
-            <DollarSign className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$25.00</div>
-            <p className="text-xs text-muted-foreground">Per tCO2</p>
+            <p className="text-xs text-muted-foreground">Lifetime production</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Danh sách chi tiết hành trình đã duyệt */}
+      {/* Phần danh sách Verified Journeys giữ nguyên để tham khảo */}
       <Card>
         <CardHeader>
-          <CardTitle>Verified Credit Sources</CardTitle>
+          <CardTitle>Source History</CardTitle>
           <CardDescription>
-            Credits generated from your approved trips
+            "Your verified journeys history (Reference only)
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* ... Giữ nguyên phần render list journeys ... */}
           <div className="space-y-4">
             {verifiedJourneys.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
@@ -217,11 +227,8 @@ export function CreditManagement() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-emerald-600">
-                      Verified
-                    </p>
                     <Badge className="bg-emerald-100 text-emerald-900">
-                      Ready to List
+                      Verified
                     </Badge>
                   </div>
                 </div>
@@ -235,26 +242,32 @@ export function CreditManagement() {
       <Card>
         <CardHeader>
           <CardTitle>List New Credits</CardTitle>
-          <CardDescription>
-            Set a price and list your verified credits for sale
-          </CardDescription>
+          <CardDescription>Create a new sell order</CardDescription>
         </CardHeader>
         <CardContent>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
                 <Tag className="mr-2 h-4 w-4" />
-                List Credits for Sale
+                List All Available Credits
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>List Credits</DialogTitle>
+                <DialogTitle>Confirm Listing</DialogTitle>
                 <DialogDescription>
-                  Set your price per credit (tCO2) to list on the marketplace
+                  You are listing all your available credits.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="flex justify-between mb-2">
+                    <span>Available to list:</span>
+                    <span className="font-bold text-emerald-600">
+                      {availableCredits.toFixed(2)} tCO2
+                    </span>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="price">Price per Credit (USD)</Label>
                   <Input
@@ -263,29 +276,16 @@ export function CreditManagement() {
                     step="0.01"
                     value={listingPrice}
                     onChange={(e) => setListingPrice(e.target.value)}
-                    placeholder="25.00"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Market average: $25.00 per tCO2
-                  </p>
-                </div>
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm font-medium mb-2">Available to List:</p>
-                  <p className="text-2xl font-bold text-emerald-600">
-                    {totalAvailableCredits.toFixed(2)} tCO2
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    From verified journeys
-                  </p>
                 </div>
               </div>
               <DialogFooter>
                 <Button
                   onClick={handleListCredit}
-                  disabled={isListing}
+                  disabled={isListing || availableCredits <= 0}
                   className="w-full bg-emerald-600 hover:bg-emerald-700"
                 >
-                  {isListing ? "Listing..." : "List Credits"}
+                  {isListing ? "Processing..." : "Confirm Listing"}
                 </Button>
               </DialogFooter>
             </DialogContent>
