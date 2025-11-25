@@ -55,6 +55,14 @@ export interface UpdateUserRoleRequest {
   role: UserRole;
 }
 
+export interface CreateAdminUserRequest {
+  email: string;
+  fullName: string;
+  password: string;
+  role: string;
+  active?: boolean;
+}
+
 // ================== API FUNCTIONS ==================
 
 /**
@@ -99,5 +107,17 @@ export async function updateUserRole(id: string | number, role: UserRole) {
     `admin/users/${id}/role`,
     { role }
   );
+  return data;
+}
+
+/**
+ * POST /api/admin/users
+ * Create a new user (admin action)
+ */
+export async function createAdminUser(payload: CreateAdminUserRequest) {
+  const { data } = await axiosClient.post<UserSummary>("admin/users", {
+    ...payload,
+    role: payload.role?.toUpperCase?.(),
+  });
   return data;
 }

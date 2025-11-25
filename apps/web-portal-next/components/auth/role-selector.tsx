@@ -13,6 +13,7 @@ import type { UserRole } from "@/lib/mock-data";
 interface RoleSelectorProps {
   selectedRole: UserRole;
   onRoleChange: (role: UserRole) => void;
+  showHidden?: boolean;
 }
 
 const roles: Array<{
@@ -58,12 +59,13 @@ const roles: Array<{
 export function RoleSelector({
   selectedRole,
   onRoleChange,
+  showHidden = false,
 }: RoleSelectorProps) {
   return (
     <TooltipProvider>
       <div className="grid grid-cols-2 gap-3">
         {roles
-          .filter((role) => !role.hidden)
+          .filter((role) => showHidden || !role.hidden)
           .map((role) => {
             const Icon = role.icon;
             const isSelected = selectedRole === role.value;

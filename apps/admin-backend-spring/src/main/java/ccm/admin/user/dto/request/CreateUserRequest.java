@@ -9,5 +9,6 @@ public record CreateUserRequest(
         @Size(min = 8, message = "Password must be at least 8 chars") 
         @StrongPassword 
         @NotBlank String password,
-        @NotBlank String role 
+        @NotBlank String role,
+        Boolean active
 ) {}

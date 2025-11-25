@@ -56,7 +56,8 @@ class UserServiceImplTest {
                 "newuser@carbon.local",
                 "New User",
                 "SecurePass123!",
-                "BUYER"
+                "BUYER",
+                null
         );
     }
 
@@ -73,7 +74,8 @@ class UserServiceImplTest {
                 duplicateEmail,
                 "Some User",
                 "password123",
-                "BUYER"
+                "BUYER",
+                null
         );
 
         when(userRepo.existsByEmail(duplicateEmail)).thenReturn(true);
@@ -97,7 +99,8 @@ class UserServiceImplTest {
                 adminEmail,
                 "Another Admin",
                 "admin123",
-                "ADMIN"
+                "ADMIN",
+                null
         );
 
         when(userRepo.existsByEmail(adminEmail)).thenReturn(true);
@@ -149,7 +152,8 @@ class UserServiceImplTest {
                 specialEmail,
                 "User",
                 "password",
-                "BUYER"
+                "BUYER",
+                null
         );
 
         when(userRepo.existsByEmail(specialEmail)).thenReturn(true);
