@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import ccm.admin.credit.entity.CarbonCredit;
 
 @Entity(name = "OwnerCreditListing")
 @Table(name = "listings")

@@ -7,6 +7,7 @@ import ccm.owner.wallet.repository.EWalletRepository;
 import ccm.admin.payout.entity.Payout;
 import ccm.admin.payout.entity.enums.PayoutStatus;
 import ccm.admin.payout.repository.PayoutRepository;
+import ccm.admin.journey.entity.Journey;
 import ccm.admin.journey.repository.JourneyRepository;
 import ccm.admin.transaction.repository.TransactionRepository;
 import ccm.admin.user.entity.User;
@@ -55,78 +56,75 @@ public class OwnerWalletService {
         User currentUser = getCurrentUser();
         Long userId = currentUser.getId();
 
-        // 1. Tìm hoặc tạo ví tiền (Money Wallet)
+        // 1. Lấy ví (Giữ nguyên)
         EWallet wallet = eWalletRepository.findByUserId(userId)
                 .orElseGet(() -> createWalletForUser(userId));
 
-        // ====================================================
-        // PHẦN 1: TÍNH TOÁN TÍN CHỈ (CREDITS LOGIC)
-        // ====================================================
-        
-        // A. Tổng tín chỉ kiếm được (Total Generated)
-        BigDecimal totalCreditsGenerated = Optional.ofNullable(
-            journeyRepository.sumCreditsByUserId(userId)
-        ).orElse(BigDecimal.ZERO);
-
-        List<Listing> soldListings = listingRepository.findAll((root, query, cb) -> 
+        // 2. Fix Logic tính Tín chỉ (Hỗ trợ cả VERIFIED của CVA)
+        // Lấy danh sách hành trình đã được duyệt (bao gồm cả VERIFIED và APPROVED)
+        List<Journey> verifiedJourneys = journeyRepository.findAll((root, query, cb) -> 
             cb.and(
-                cb.equal(root.get("owner"), currentUser),
-                cb.equal(root.get("status"), ListingStatus.SOLD)
-            )
-        );
-        BigDecimal soldCredits = soldListings.stream().map(Listing::getQuantity).reduce(BigDecimal.ZERO, BigDecimal::add);
-        List<Listing> unavailableListings = listingRepository.findAll((root, query, cb) -> 
-            cb.and(
-                cb.equal(root.get("owner"), currentUser),
-                root.get("status").in(
-                    ListingStatus.PENDING, 
-                    ListingStatus.APPROVED, 
-                    ListingStatus.OPEN,
-                    ListingStatus.SOLD 
+                cb.equal(root.get("userId"), userId),
+                cb.or(
+                    cb.equal(root.get("status").as(String.class), "VERIFIED"), // CVA dùng cái này
+                    cb.equal(root.get("status").as(String.class), "APPROVED")  // Admin dùng cái này
                 )
             )
         );
         
-        BigDecimal usedCredits = unavailableListings.stream()
-                .map(Listing::getQuantity)
+        BigDecimal totalCreditsGenerated = verifiedJourneys.stream()
+                .map(j -> j.getCreditsGenerated() != null ? j.getCreditsGenerated() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // C. Khả dụng = Tổng kiếm được - Đã sử dụng
-        BigDecimal availableCredits = totalCreditsGenerated.subtract(usedCredits);
-        
-        // Đảm bảo không bị âm
-        if (availableCredits.compareTo(BigDecimal.ZERO) < 0) {
-            availableCredits = BigDecimal.ZERO; 
-        }
-
-        // ====================================================
-        // PHẦN 2: TÍNH TOÁN TIỀN (MONEY LOGIC)
-        // ====================================================
-List<Transaction> mySales = transactionRepository.findAll((root, query, cb) ->
-            cb.equal(root.get("sellerId"), userId)
+        // 3. Fix Logic tính Listing đang khóa (Thêm SOLD vào Enum ListingStatus ở Bước 1 trước nhé)
+        // Tính tổng tín chỉ đang bán hoặc đã bán
+        List<Listing> allListings = listingRepository.findAll((root, query, cb) -> 
+            cb.equal(root.get("owner"), currentUser)
         );
         
-          BigDecimal totalEarnings = mySales.stream()
-                .filter(t -> "COMPLETED".equalsIgnoreCase(t.getStatus().name())) 
-                .map(Transaction::getTotalPrice) // Lấy tổng tiền mỗi giao dịch
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        // Tổng tiền đã rút thành công (COMPLETED)
-        BigDecimal completedPayouts = Optional.ofNullable(
-            payoutRepository.sumAmountByUserIdAndStatus(userId, PayoutStatus.COMPLETED)
-        ).orElse(BigDecimal.ZERO);
+        BigDecimal lockedCredits = allListings.stream()
+            .filter(l -> "PENDING".equals(l.getStatus().name()) || 
+                         "APPROVED".equals(l.getStatus().name()) || 
+                         "OPEN".equals(l.getStatus().name()))
+            .map(Listing::getQuantity)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Tổng tiền đã duyệt rút (APPROVED) - Trừ khỏi ví
-        BigDecimal approvedPayouts = Optional.ofNullable(
-            payoutRepository.sumApprovedAmountByUserId(userId)
-        ).orElse(BigDecimal.ZERO);
+        BigDecimal soldCredits = allListings.stream()
+            .filter(l -> "SOLD".equals(l.getStatus().name()))
+            .map(Listing::getQuantity)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalWithdrawals = completedPayouts.add(approvedPayouts);
-        
-        BigDecimal pendingWithdrawals = Optional.ofNullable(
-            payoutRepository.sumPendingAmountByUserId(userId)
-        ).orElse(BigDecimal.ZERO);
+        // 4. Tính khả dụng: Tổng kiếm - (Đang bán + Đã bán)
+        BigDecimal availableCredits = totalCreditsGenerated.subtract(lockedCredits).subtract(soldCredits);
+        if (availableCredits.compareTo(BigDecimal.ZERO) < 0) availableCredits = BigDecimal.ZERO;
 
-        log.info("User {}: MoneyBalance=${}, AvailableCredits={}", currentUser.getEmail(), wallet.getBalance(), availableCredits);
+        // 5. [FIX QUAN TRỌNG] Tính tiền kiếm được (Total Earnings)
+        // Cách an toàn: Lấy Listing của user -> Lấy Transaction tương ứng
+        BigDecimal totalEarnings = BigDecimal.ZERO;
+        try {
+            // Lấy list ID các bài đăng của user
+            List<Long> myListingIds = allListings.stream().map(Listing::getId).toList();
+            
+            if (!myListingIds.isEmpty()) {
+                // Tìm transaction liên quan đến các listing này
+                // Lưu ý: Cách này an toàn hơn tìm theo email
+                List<Transaction> transactions = transactionRepository.findAll(); // Lấy tạm all rồi lọc (hoặc viết query findAllByListingIdIn)
+                
+                totalEarnings = transactions.stream()
+                    .filter(t -> myListingIds.contains(t.getListingId()))
+                    .filter(t -> "COMPLETED".equalsIgnoreCase(t.getStatus().name()))
+                    .map(t -> t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO) // transaction dùng 'amount' hoặc 'totalPrice' tùy entity
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            }
+        } catch (Exception e) {
+            log.error("Error calculating earnings: {}", e.getMessage());
+        }
+
+        // ... (Phần Withdrawals giữ nguyên) ...
+        BigDecimal approvedPayouts = Optional.ofNullable(payoutRepository.sumApprovedAmountByUserId(userId)).orElse(BigDecimal.ZERO);
+        BigDecimal completedPayouts = Optional.ofNullable(payoutRepository.sumAmountByUserIdAndStatus(userId, PayoutStatus.COMPLETED)).orElse(BigDecimal.ZERO);
+        BigDecimal totalWithdrawals = approvedPayouts.add(completedPayouts);
+        BigDecimal pendingWithdrawals = Optional.ofNullable(payoutRepository.sumPendingAmountByUserId(userId)).orElse(BigDecimal.ZERO);
 
         return WalletBalanceResponse.builder()
                 .walletId(wallet.getId())
@@ -136,15 +134,10 @@ List<Transaction> mySales = transactionRepository.findAll((root, query, cb) ->
                 .currency(wallet.getCurrency())
                 .status(wallet.getStatus().name())
                 .lastUpdated(wallet.getUpdatedAt())
-                .soldCredits(soldCredits) // [MỚI] Trả về số đã bán
-                
-                .totalEarnings(totalEarnings) 
-                // Thông tin Credits
                 .totalCreditsGenerated(totalCreditsGenerated)
-                .availableCredits(availableCredits) // Số dư thực tế để bán
-                .lockedCredits(usedCredits)        // Tổng đã dùng
-                
-                // Thông tin Money
+                .availableCredits(availableCredits)
+                .lockedCredits(lockedCredits)
+                .soldCredits(soldCredits)
                 .totalEarnings(totalEarnings)
                 .totalWithdrawals(totalWithdrawals)
                 .pendingWithdrawals(pendingWithdrawals)

@@ -51,7 +51,7 @@ public class OwnerWalletController {
 
     @Operation(
             summary = "Request Withdrawal",
-            description = "Submit a withdrawal request (payout) to transfer funds from wallet to bank account"
+            description = "Submit a withdrawal request (payout) to transfer funds  from wallet to bank account"
     )
     @PostMapping("/withdraw")
     public ResponseEntity<Map<String, Object>> requestWithdrawal(
