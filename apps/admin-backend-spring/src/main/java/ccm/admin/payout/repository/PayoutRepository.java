@@ -27,28 +27,42 @@ public interface PayoutRepository extends JpaRepository<Payout, Long>, JpaSpecif
     /** Get total count */
     @Query("SELECT COUNT(p) FROM Payout p")
     long getTotalCount();
-    
+
     /**
      * Count payout requests by user
+     * 
      * @param userId The user ID
      * @return Number of payout requests
      */
     @Query("SELECT COUNT(p) FROM Payout p WHERE p.userId = :userId")
     long countByUserId(@Param("userId") Long userId);
-    
+
     /**
      * Sum pending payout amount for a user
+     * 
      * @param userId The user ID
      * @return Pending payout amount
      */
     @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payout p WHERE p.userId = :userId AND p.status = 'PENDING'")
     BigDecimal sumPendingAmountByUserId(@Param("userId") Long userId);
-    
+
     /**
      * Sum approved payout amount for a user (wallet balance)
+     * 
      * @param userId The user ID
      * @return Approved payout amount
      */
     @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payout p WHERE p.userId = :userId AND p.status = 'APPROVED'")
     BigDecimal sumApprovedAmountByUserId(@Param("userId") Long userId);
+
+    /**
+     * Calculate total payout amount by user and status
+     * 
+     * @param userId The user ID
+     * @param status The payout status
+     * @return Total payout amount
+     */
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payout p WHERE p.userId = :userId AND p.status = :status")
+    BigDecimal calculateTotalAmountByUserIdAndStatus(@Param("userId") Long userId,
+            @Param("status") PayoutStatus status);
 }
