@@ -133,3 +133,47 @@ export async function requestWithdrawal(payload: WithdrawalRequest) {
   const { data } = await requestOwner.post("/wallet/withdraw", payload);
   return data;
 }
+
+// ========== REPORT TYPES ==========
+export interface OwnerReportSummary {
+    totalJourneys: number;
+    verifiedJourneys: number;
+    pendingJourneys: number;
+    rejectedJourneys: number;
+    totalCreditsGenerated: number;
+    averageCreditsPerJourney: number;
+    verificationRate: number;
+    totalEarnings: number;
+    totalWithdrawals: number;
+    pendingWithdrawals: number;
+    availableBalance: number;
+}
+
+export interface OwnerMonthlyReport {
+    year: number;
+    journeysByMonth: Record<string, number>;
+    creditsByMonth: Record<string, number>;
+    earningsByMonth: Record<string, number>;
+}
+
+// ========== REPORT API FUNCTIONS ==========
+
+/**
+ * Get comprehensive summary report
+ */
+export async function getOwnerReportSummary(): Promise<OwnerReportSummary> {
+    const response = await requestOwner.get("/reports/summary");
+    return response.data;
+}
+
+/**
+ * Get monthly breakdown report
+ */
+export async function getOwnerMonthlyReport(
+    year: number = new Date().getFullYear()
+): Promise<OwnerMonthlyReport> {
+    const response = await requestOwner.get("/reports/monthly", {
+        params: { year },
+    });
+    return response.data;
+}
