@@ -31,3 +31,5 @@
 **/*.class
 **/*.jar
 !**/maven-wrapper.jar
+
+.fake

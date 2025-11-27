@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, MoreVertical, UserCheck, UserX, Edit, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, MoreVertical, UserCheck, UserX, Edit, Loader2, ChevronLeft, ChevronRight, Plus } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +27,8 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { getUsers, getUser, updateUserStatus, updateUserRole, type UserSummary, type UserFilterParams, UserRole, UserStatus } from "@/lib/api/admin-users"
+import { getUsers, updateUserStatus, updateUserRole, type UserSummary, type UserFilterParams, UserRole, UserStatus } from "@/lib/api/admin-users"
+import { UserCreateModal } from "./user-create-modal"
 
 export function UserManagement() {
   const { toast } = useToast()
@@ -38,6 +39,7 @@ export function UserManagement() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   
   // Pagination
@@ -176,9 +178,15 @@ export function UserManagement() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Search Users</CardTitle>
-          <CardDescription>Find and manage platform users</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <div>
+            <CardTitle>Search Users</CardTitle>
+            <CardDescription>Find and manage platform users</CardDescription>
+          </div>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add User
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-4">
@@ -395,6 +403,12 @@ export function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <UserCreateModal
+        open={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        onCreated={loadUsers}
+      />
     </div>
   )
 }

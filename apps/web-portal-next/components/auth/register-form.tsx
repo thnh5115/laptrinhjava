@@ -19,26 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { RoleSelector } from "./role-selector";
-// TODO: Import from proper location when validators are available
-// import { registerSchema, type RegisterFormData } from "@/lib/validators/register-schema"
-import { mockUsers } from "@/lib/mock-data";
-import type { UserRole } from "@/lib/mock-data";
-
-// Temporary inline schema until validators package is properly set up
-import { z } from "zod";
-const registerSchema = z
-  .object({
-    fullName: z.string().min(2, "Please enter your name"),
-    email: z.string().email("Enter a valid email"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z.string().min(6, "Confirm your password"),
-    role: z.enum(["ev-owner", "buyer", "cva", "admin"]),
-  })
-  .refine((values) => values.password === values.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "Passwords do not match",
-  });
-type RegisterFormData = z.infer<typeof registerSchema>;
+import { registerSchema, type RegisterFormData, uiRoleToApiRole } from "@/lib/validators/user";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -72,20 +53,13 @@ export function RegisterForm() {
     try {
       // --- GỌI API THẬT CỦA ADMIN BACKEND ---
       // Role cần chuyển đổi: "ev-owner" -> "EV_OWNER" để khớp với Enum Java
-      const roleMapping = {
-        "ev-owner": "EV_OWNER",
-        buyer: "BUYER",
-        cva: "CVA",
-        admin: "ADMIN",
-      };
-
       // Backend của bạn đang chạy cổng 8080
       // axiosClient đã được cấu hình base URL là http://localhost:8080/api
       await axiosClient.post("/auth/register", {
         fullName: data.fullName,
         email: data.email,
         password: data.password,
-        role: roleMapping[data.role as keyof typeof roleMapping] || "EV_OWNER",
+        role: uiRoleToApiRole(data.role),
       });
 
       toast({

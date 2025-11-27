@@ -1,5 +1,6 @@
 package ccm.admin.user.controller;
 
+import ccm.admin.user.dto.request.CreateUserRequest;
 import ccm.admin.user.dto.request.UserRoleUpdateRequest;
 import ccm.admin.user.dto.request.UserStatusUpdateRequest;
 import ccm.admin.user.dto.response.UserOverviewResponse;
@@ -12,6 +13,7 @@ import ccm.admin.user.service.UserAdminService;
 import ccm.admin.user.service.UserService;
 import ccm.common.dto.paging.PageResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -48,6 +50,15 @@ public class UserAdminController {
     ) {
         var result = userAdminService.searchUsers(page, size, sort, role, status, keyword);
         return ResponseEntity.ok(result);
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponse> createUser(
+            @Valid @RequestBody CreateUserRequest req
+    ) {
+        UserResponse created = userService.create(req);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping("/{id}")

@@ -63,14 +63,19 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException(
                 String.format("Email '%s' is already registered. Please use a different email address.", req.email()));
         }
-        var role = roleRepo.findByName(req.role())
+        
+        String roleName = req.role() != null ? req.role().toUpperCase() : null;
+        var role = roleRepo.findByName(roleName)
                 .orElseThrow(() -> new IllegalArgumentException("Role not found: " + req.role()));
+        
+        boolean active = req.active() == null || req.active().booleanValue();
+        AccountStatus status = active ? AccountStatus.ACTIVE : AccountStatus.SUSPENDED;
 
         var u = User.builder()
                 .email(req.email())
                 .fullName(req.fullName())
                 .passwordHash(passwordEncoder.encode(req.password()))
-                .status(AccountStatus.ACTIVE)
+                .status(status)
                 .role(role)
                 .build();
 
