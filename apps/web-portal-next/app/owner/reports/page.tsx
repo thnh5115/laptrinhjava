@@ -1,8 +1,8 @@
 "use client";
 
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { OwnerReportsView } from "@/components/owner/reports-view";
 import { Home, Upload, History, Wallet, ShoppingCart, FileText } from "lucide-react";
-import { CreditManagement } from "@/components/owner/credit-management";
+import {DashboardLayout} from "@/components/layout/dashboard-layout.tsx";
 
 const navigation = [
     { name: "Dashboard", href: "/owner/dashboard", icon: Home }, // ĐÚNG (khớp với folder app/owner)
@@ -14,18 +14,14 @@ const navigation = [
 ];
 
 
-export default function CreditsPage() {
-  return (
-    <DashboardLayout navigation={navigation}>
-      <div>
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">My Credits</h1>
-          <p className="text-muted-foreground">
-            Manage and list your carbon credits for sale
-          </p>
-        </div>
-        <CreditManagement />
-      </div>
-    </DashboardLayout>
-  );
+export default function OwnerReportsPage() {
+    return (
+        <DashboardLayout navigation={navigation}>
+            <div className="max-w-3xl">
+                <OwnerReportsView />
+            </div>
+        </DashboardLayout>
+    );
+
 }
+

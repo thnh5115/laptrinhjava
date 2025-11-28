@@ -52,4 +52,14 @@ public interface JourneyRepository extends JpaRepository<Journey, Long>, JpaSpec
      */
     @Query("SELECT COALESCE(SUM(j.creditsGenerated), 0) FROM Journey j WHERE j.userId = :userId AND j.status = 'VERIFIED'")
     BigDecimal sumCreditsByUserId(@Param("userId") Long userId);
+
+    /**
+     * Count journeys by user ID and status
+     *
+     * @param userId The user ID
+     * @param status The journey status
+     * @return Number of journeys
+     */
+    @Query("SELECT COUNT(j) FROM Journey j WHERE j.userId = :userId AND j.status = :status")
+    long countByUserIdAndStatus(@Param("userId") Long userId, @Param("status") JourneyStatus status);
 }
