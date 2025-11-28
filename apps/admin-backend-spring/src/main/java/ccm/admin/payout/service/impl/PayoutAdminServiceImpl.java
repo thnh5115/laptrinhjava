@@ -211,4 +211,25 @@ public class PayoutAdminServiceImpl implements PayoutAdminService {
                 .map(User::getEmail)
                 .orElse(null);
     }
+
+    @Override
+@Transactional
+public PayoutDetailResponse completePayout(Long id, Long adminId) {
+    log.info("Admin {} completing payout {}", adminId, id);
+    
+    Payout payout = payoutRepository.findById(id)
+            .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Payout not found with id: " + id));
+
+    // Chỉ cho phép hoàn tất nếu đơn đã được duyệt trước đó
+    if (payout.getStatus() != PayoutStatus.APPROVED) {
+        throw new IllegalStateException("Only APPROVED payouts can be completed. Current status: " + payout.getStatus());
+    }
+
+    payout.setStatus(PayoutStatus.COMPLETED);
+    // Cập nhật lại thời gian xử lý lần cuối
+    payout.setProcessedAt(java.time.LocalDateTime.now());
+    
+    Payout savedPayout = payoutRepository.save(payout);
+    return mapToDetailResponse(savedPayout);
+}
 }

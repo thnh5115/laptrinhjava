@@ -58,4 +58,5 @@ public interface PayoutAdminService {
      * @return Updated payout details
      */
     PayoutDetailResponse rejectPayout(Long id, Long adminId, UpdatePayoutStatusRequest request);
+    PayoutDetailResponse completePayout(Long id, Long adminId);
 }

@@ -14,11 +14,17 @@ import ccm.buyer.service.ListingService;
 import ccm.buyer.service.NotificationService;
 import ccm.buyer.service.PaymentService;
 import ccm.buyer.service.TransactionService;
+       
+    
+import ccm.buyer.entity.CarbonCredit;
 
 import ccm.buyer.entity.EWallet; // Import mới
+import ccm.buyer.repository.CarbonCreditRepository;
 import ccm.buyer.repository.EWalletRepository; // Import mới
 import ccm.buyer.repository.ListingRepository; // Import mới
 import ccm.buyer.enums.ListingStatus;
+
+
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,13 +41,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
 
-  private final TransactionRepository transactionRepository;
+private final TransactionRepository transactionRepository;
 private final ListingService listingService;
 private final PaymentService paymentService;
 private final InvoiceService invoiceService;
 private final NotificationService notifyService;
 private final EWalletRepository eWalletRepository;
     private final ListingRepository listingRepository;
+    private final CarbonCreditRepository creditRepository; // Cần inject thêm cái này
+    private final EWalletRepository walletRepository;
 
   @Override
   public List<TransactionResponse> list(Long buyerId) {
@@ -77,6 +85,7 @@ public TransactionResponse create(CreateTransactionRequest req) {
     try {
         Payment pay = paymentService.processPayment(tx.getId(), "WALLET", total);
         if (pay.getStatus() == PayStatus.SUCCESS) {
+          listing.setStatus(ListingStatus.SOLD);
             BigDecimal newQty = listing.getQty().subtract(req.getQty());
                 listing.setQty(newQty);
                 
@@ -135,4 +144,81 @@ public TransactionResponse create(CreateTransactionRequest req) {
         .createdAt(t.getCreatedAt())
         .build();
   }
+  public TransactionResponse buyListing(Long buyerId, Long listingId, BigDecimal qtyRequested) { 
+        // 1. Lấy thông tin Listing (Dùng Entity của Buyer)
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new NotFoundException("Listing not found"));
+
+        // Validate: Listing phải đang mở (APPROVED hoặc OPEN)
+        if (listing.getStatus() != ListingStatus.APPROVED && listing.getStatus() != ListingStatus.OPEN) {
+            throw new IllegalStateException("This listing is no longer available.");
+        }
+
+        // 2. [FIX LOGIC] MUA ĐỨT (BUY ALL)
+        // Lấy toàn bộ số lượng còn lại của Listing
+        BigDecimal amountToBuy = listing.getQty(); 
+        BigDecimal totalCost = amountToBuy.multiply(listing.getPrice());
+
+        // 3. Kiểm tra số dư Buyer (Ví dụ logic ví)
+        EWallet buyerWallet = walletRepository.findByUserId(buyerId)
+                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+        
+        if (buyerWallet.getBalance().compareTo(totalCost) < 0) {
+             throw new IllegalStateException("Insufficient funds.");
+        }
+
+        // 4. Trừ tiền Buyer (Logic ví tiền)
+        buyerWallet.setBalance(buyerWallet.getBalance().subtract(totalCost));
+        walletRepository.save(buyerWallet);
+        
+        // Cộng tiền cho Seller (Cần tìm ví seller)
+        EWallet sellerWallet = walletRepository.findByUserId(listing.getSellerId())
+                .orElseThrow(() -> new RuntimeException("Seller wallet not found"));
+        sellerWallet.setBalance(sellerWallet.getBalance().add(totalCost));
+        walletRepository.save(sellerWallet);
+
+        // 5. [QUAN TRỌNG] Cập nhật trạng thái Listing thành ĐÃ BÁN (SOLD)
+        listing.setStatus(ListingStatus.SOLD); // Enum của Buyer [cite: 2546]
+        listing.setQty(BigDecimal.ZERO);       // Set về 0
+        listingRepository.save(listing);
+
+        // 6. Cập nhật trạng thái Carbon Credit gốc thành SOLD
+        if (listing.getCarbonCreditId() != null) {
+            CarbonCredit credit = creditRepository.findById(listing.getCarbonCreditId()).orElse(null);
+            if (credit != null) {
+                // Bên Buyer, status là String 
+                credit.setStatus("SOLD"); 
+                // credit.setBuyerId(buyerId); // Nếu Entity Buyer có trường này thì set, không thì bỏ qua
+                // credit.setSoldAt(LocalDateTime.now()); // Tương tự
+                creditRepository.save(credit);
+            }
+        }
+
+        // 7. Tạo Transaction Log
+        Transaction transaction = Transaction.builder()
+                .buyerId(buyerId)
+                // .sellerId(...) // Entity Transaction bên Buyer chưa có sellerId, nếu cần hãy thêm vào Entity
+                .listingId(listing.getId())
+                .qty(amountToBuy)
+                .amount(totalCost) // Entity Transaction dùng 'amount' cho tổng tiền [cite: 2537]
+                .status(TrStatus.COMPLETED)
+                .type("CREDIT_PURCHASE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        transactionRepository.save(transaction);
+
+        // Return response (Map từ entity sang DTO)
+        return TransactionResponse.builder()
+                .id(transaction.getId())
+                .buyerId(transaction.getBuyerId())
+                .listingId(transaction.getListingId())
+                .qty(transaction.getQty())
+                .amount(transaction.getAmount())
+                .status(transaction.getStatus())
+                .createdAt(transaction.getCreatedAt())
+                .build();
+    }
 }
+

@@ -18,7 +18,6 @@ import {
 } from "recharts";
 import { Leaf, ShieldCheck, TrendingUp, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/AuthContext";
-// Import API thật
 import { getMyTransactions, type Transaction } from "@/lib/api/buyer";
 
 export function PortfolioOverview() {
@@ -32,9 +31,7 @@ export function PortfolioOverview() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Lấy tất cả giao dịch
         const data = await getMyTransactions(Number(user.id));
-        // Chỉ lấy các giao dịch thành công
         const completedTx = data.filter((tx) => tx.status === "COMPLETED");
         setTransactions(completedTx);
       } catch (error) {
@@ -46,13 +43,12 @@ export function PortfolioOverview() {
     fetchData();
   }, [user]);
 
-  // --- TÍNH TOÁN SỐ LIỆU THẬT ---
+  // Tính toán số liệu
   const totalCredits = transactions.reduce((sum, tx) => sum + tx.qty, 0);
   const totalInvested = transactions.reduce((sum, tx) => sum + tx.amount, 0);
   const projectsCount = new Set(transactions.map((tx) => tx.listingId)).size;
 
-  // Dữ liệu biểu đồ (Phân bổ theo Listing ID - Dự án)
-  // Gom nhóm số lượng theo Listing ID
+  // Dữ liệu biểu đồ
   const distributionMap = transactions.reduce((acc, tx) => {
     const key = `Project #${tx.listingId}`;
     acc[key] = (acc[key] || 0) + tx.qty;
@@ -74,7 +70,6 @@ export function PortfolioOverview() {
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
@@ -123,9 +118,7 @@ export function PortfolioOverview() {
         </Card>
       </div>
 
-      {/* Chart & Details */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Biểu đồ phân bổ */}
         <Card>
           <CardHeader>
             <CardTitle>Credit Distribution</CardTitle>
@@ -163,7 +156,6 @@ export function PortfolioOverview() {
           </CardContent>
         </Card>
 
-        {/* Danh sách tóm tắt */}
         <Card>
           <CardHeader>
             <CardTitle>Recent Contributions</CardTitle>

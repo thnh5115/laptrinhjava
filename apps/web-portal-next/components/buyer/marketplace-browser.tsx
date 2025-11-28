@@ -21,10 +21,8 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/contexts/AuthContext";
-// Import API thật vừa tạo
 import { getListings, purchaseCredit, type Listing } from "@/lib/api/buyer";
 
 export function MarketplaceBrowser() {
@@ -33,11 +31,10 @@ export function MarketplaceBrowser() {
 
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [purchaseAmount, setPurchaseAmount] = useState("1");
+  // [ĐÃ XÓA] const [purchaseAmount, setPurchaseAmount] = useState("1");
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [openDialogId, setOpenDialogId] = useState<number | null>(null);
 
-  // Tải dữ liệu thật
   const fetchListings = async () => {
     try {
       setLoading(true);
@@ -62,12 +59,12 @@ export function MarketplaceBrowser() {
       await purchaseCredit({
         buyerId: Number(user.id),
         listingId: listing.id,
-        qty: Number(purchaseAmount),
+        qty: listing.qty, // [FIX] Luôn mua toàn bộ số lượng của Listing
       });
 
       toast({ title: "Success", description: "Purchase successful!" });
       setOpenDialogId(null);
-      fetchListings(); // Refresh danh sách để cập nhật số lượng
+      await fetchListings();
     } catch (error: any) {
       toast({
         title: "Failed",
@@ -127,7 +124,7 @@ export function MarketplaceBrowser() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Price</span>
                   <span className="font-bold text-emerald-600">
-                    ${listing.pricePerUnit}
+                    ${listing.pricePerUnit} / tCO2
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -140,34 +137,56 @@ export function MarketplaceBrowser() {
                   onOpenChange={(o) => setOpenDialogId(o ? listing.id : null)}
                 >
                   <DialogTrigger asChild>
-                    <Button className="w-full">Buy Now</Button>
+                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
+                      Buy Now
+                    </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Confirm Purchase</DialogTitle>
+                      <DialogDescription>
+                        You are buying the entire listing.
+                      </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 space-y-4">
-                      <Label>Amount (tCO2)</Label>
-                      <Input
-                        type="number"
-                        value={purchaseAmount}
-                        onChange={(e) => setPurchaseAmount(e.target.value)}
-                        max={listing.qty}
-                        min={1}
-                      />
-                      <p className="text-right font-bold text-emerald-600">
-                        Total: $
-                        {(
-                          Number(purchaseAmount) * listing.pricePerUnit
-                        ).toFixed(2)}
-                      </p>
+
+                    {/* [FIX] Thay thế ô Input bằng thông tin xác nhận */}
+                    <div className="py-4 space-y-4 bg-muted/50 p-4 rounded-lg">
+                      <div className="flex justify-between">
+                        <span>Quantity:</span>
+                        <span className="font-medium">{listing.qty} tCO2</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Price per Unit:</span>
+                        <span>${listing.pricePerUnit}</span>
+                      </div>
+                      <div className="border-t pt-2 flex justify-between items-center">
+                        <span className="font-bold">Total Price:</span>
+                        <span className="text-xl font-bold text-emerald-600">
+                          ${(listing.qty * listing.pricePerUnit).toFixed(2)}
+                        </span>
+                      </div>
                     </div>
+
                     <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setOpenDialogId(null)}
+                      >
+                        Cancel
+                      </Button>
                       <Button
                         onClick={() => handlePurchase(listing)}
                         disabled={isPurchasing}
+                        className="bg-emerald-600 hover:bg-emerald-700"
                       >
-                        {isPurchasing ? "Processing..." : "Confirm"}
+                        {isPurchasing ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          "Confirm Purchase"
+                        )}
                       </Button>
                     </DialogFooter>
                   </DialogContent>

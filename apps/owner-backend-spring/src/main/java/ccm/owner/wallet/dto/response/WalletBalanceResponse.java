@@ -27,4 +27,10 @@ public class WalletBalanceResponse {
     private BigDecimal totalEarnings;
     private BigDecimal totalWithdrawals;
     private BigDecimal pendingWithdrawals;
+
+   
+    private BigDecimal lockedCredits;         // Tín chỉ đang treo bán (bị khóa)
+    private BigDecimal availableCredits;
+
+    private BigDecimal soldCredits;
 }

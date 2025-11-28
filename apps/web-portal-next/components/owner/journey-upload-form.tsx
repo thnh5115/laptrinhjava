@@ -90,8 +90,14 @@ export function JourneyUploadForm() {
 
   const estimatedCredits =
     formData.distance && formData.energyUsed
-      ? ((Number.parseFloat(formData.distance) * 0.32) / 1000).toFixed(2)
-      : "0.00";
+      ? (
+          Math.max(
+            Number.parseFloat(formData.distance) * 0.12 -
+              Number.parseFloat(formData.energyUsed) * 0.045,
+            0
+          ) / 1000
+        ).toFixed(4) // Lấy 4 số sau dấu phẩy cho chính xác
+      : "0.0000";
 
   return (
     <Card>

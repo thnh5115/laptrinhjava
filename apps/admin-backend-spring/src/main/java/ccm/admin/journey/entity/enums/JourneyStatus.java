@@ -6,5 +6,6 @@ package ccm.admin.journey.entity.enums;
 public enum JourneyStatus {
     PENDING, // Awaiting CVA verification
     VERIFIED, // Approved by CVA
-    REJECTED    // Rejected by CVA
+    REJECTED,    // Rejected by CVA
+APPROVED, // Approved by CVA
 }
