@@ -12,4 +12,5 @@ public interface TransactionService {
   TransactionResponse create(CreateTransactionRequest req);
   TransactionResponse updateStatus(Long id, TrStatus status);
   TransactionResponse buyListing(Long buyerId, Long listingId, BigDecimal qtyRequested) ;
+ List<TransactionResponse> createBulk(Long buyerId, BigDecimal totalQty);
 }

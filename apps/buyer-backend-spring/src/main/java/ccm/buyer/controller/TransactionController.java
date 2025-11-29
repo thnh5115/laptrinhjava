@@ -45,4 +45,11 @@ public class TransactionController {
     public ResponseEntity<BuyerDashboardResponse> getDashboard(@PathVariable Long buyerId) {
         return ResponseEntity.ok(dashboardService.getDashboardStats(buyerId));
     }
+
+    public record QuickBuyRequest(Long buyerId, java.math.BigDecimal qty) {}
+
+    @PostMapping("/quick-buy")
+    public ResponseEntity<List<TransactionResponse>> quickBuy(@RequestBody QuickBuyRequest req) {
+        return ResponseEntity.ok(transactionService.createBulk(req.buyerId(), req.qty()));
+    }
 }

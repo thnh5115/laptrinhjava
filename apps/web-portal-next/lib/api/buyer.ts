@@ -86,3 +86,16 @@ export async function getMyCertificates(buyerId: number) {
   );
   return data;
 }
+export interface QuickBuyRequest {
+  buyerId: number;
+  qty: number;
+}
+
+export async function quickBuyCredits(data: QuickBuyRequest) {
+  // Gọi API Backend mà chúng ta đã tạo ở TransactionController
+  const response = await requestBuyer.post(
+    "buyer/transactions/quick-buy",
+    data
+  );
+  return response.data;
+}

@@ -67,4 +67,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
      */
     @Query("SELECT COALESCE(SUM(t.totalPrice), 0) FROM Transaction t WHERE t.buyerEmail = :buyerEmail AND t.status = 'COMPLETED'")
     BigDecimal sumSpendingByBuyerEmail(@Param("buyerEmail") String buyerEmail);
+
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.sellerEmail = :sellerEmail AND t.status = 'COMPLETED'")
+    BigDecimal sumSoldQuantityBySellerEmail(@Param("sellerEmail") String sellerEmail);
 }

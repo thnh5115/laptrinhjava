@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -85,15 +86,25 @@ public TransactionResponse create(CreateTransactionRequest req) {
     try {
         Payment pay = paymentService.processPayment(tx.getId(), "WALLET", total);
         if (pay.getStatus() == PayStatus.SUCCESS) {
-          listing.setStatus(ListingStatus.SOLD);
+            // [LOGIC MỚI] Trừ số lượng
             BigDecimal newQty = listing.getQty().subtract(req.getQty());
-                listing.setQty(newQty);
+            
+            // Validate lại lần cuối (dù Frontend đã chặn nhưng Backend phải chắc chắn)
+            if (newQty.compareTo(BigDecimal.ZERO) < 0) {
+                 throw new IllegalStateException("Not enough credits available");
+            }
+
+            listing.setQty(newQty); // Cập nhật số còn lại
                 
-                // Nếu hết hàng -> Đổi trạng thái thành SOLD
-                if (newQty.compareTo(BigDecimal.ZERO) == 0) {
-                    listing.setStatus(ListingStatus.SOLD);
-                }
-                listingRepository.save(listing);
+            // Nếu hết hàng (newQty == 0) -> Đổi trạng thái thành SOLD
+            if (newQty.compareTo(BigDecimal.ZERO) == 0) {
+                listing.setStatus(ListingStatus.SOLD);
+            } else {
+                // Nếu còn hàng -> Giữ nguyên trạng thái APPROVED
+                listing.setStatus(ListingStatus.APPROVED);
+            }
+            
+            listingRepository.save(listing);
 
                 // B. CỘNG TIỀN CHO NGƯỜI BÁN (Update Wallet)
                 EWallet sellerWallet = eWalletRepository.findByUserId(listing.getSellerId())
@@ -123,7 +134,46 @@ public TransactionResponse create(CreateTransactionRequest req) {
 
     return map(tx);
 }
+@Override
+    @Transactional(rollbackFor = Exception.class) // Đảm bảo tính toàn vẹn: Mua hết hoặc không mua gì
+    public List<TransactionResponse> createBulk(Long buyerId, BigDecimal totalQty) {
+        // 1. Lấy nguồn cung (Ưu tiên giá rẻ)
+        List<Listing> listings = listingRepository.findByStatusOrderByPricePerUnitAsc(ListingStatus.APPROVED);
+        
+        // 2. Kiểm tra tổng cung có đủ không
+        BigDecimal totalAvailable = listings.stream()
+                .map(Listing::getQty)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                
+        if (totalAvailable.compareTo(totalQty) < 0) {
+            throw new IllegalArgumentException("Marketplace does not have enough credits. Available: " + totalAvailable);
+        }
 
+        // 3. Thuật toán vét cạn
+        List<TransactionResponse> results = new ArrayList<>();
+        BigDecimal remainingNeeded = totalQty;
+
+        for (Listing listing : listings) {
+            if (remainingNeeded.compareTo(BigDecimal.ZERO) <= 0) break; // Đã đủ hàng
+
+            // Tính số lượng mua từ listing này (Lấy Min giữa "Cần mua" và "Có sẵn")
+            BigDecimal buyQty = listing.getQty().min(remainingNeeded);
+
+            // Gọi lại logic tạo giao dịch đơn lẻ (đã có logic trừ tiền, trừ kho, xuất hóa đơn)
+            CreateTransactionRequest subRequest = new CreateTransactionRequest();
+            subRequest.setBuyerId(buyerId);
+            subRequest.setListingId(listing.getId());
+            subRequest.setQty(buyQty);
+            
+            // Lưu ý: Hàm create() sẽ tự lo việc set SOLD nếu mua hết listing đó
+            results.add(this.create(subRequest)); 
+            
+            // Cập nhật số còn thiếu
+            remainingNeeded = remainingNeeded.subtract(buyQty);
+        }
+
+        return results;
+    }
   @Override
   public TransactionResponse updateStatus(Long id, TrStatus status) {
     Transaction tx = transactionRepository.findById(id)
